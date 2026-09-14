@@ -1210,10 +1210,13 @@ export function setGroupChatSyncDisposed(disposed: boolean) {
 export const GROUP_CHAT_MAX_ROUNDS = 3
 
 // #94478 review: continuation rounds are bounded independently of the message cap so a pathological mention chain can't consume the room's whole budget on handoffs.
-export const GROUP_CHAT_MAX_MESSAGES = 10
+export const GROUP_CHAT_MAX_MESSAGES = 16
 export const GROUP_CHAT_MAX_CONTINUATIONS = 2
 export const GROUP_CHAT_HISTORY_LIMIT = 24
-export const GROUP_CHAT_MAX_MEMBERS = 6
+// Luigi 14/9: plenaria del Board (14+ bot in ascolto, un intervento ciascuno
+// a fine discussione). Era 6: tetto UI che respingeva il 7° membro senza
+// messaggio. 16 copre l'intera flotta (12 profili + Merk + revisore + gitops + default).
+export const GROUP_CHAT_MAX_MEMBERS = 16
 
 /** Transcript form of a room speaker's profile name. Friendly identity wins:
  *  a Bot Mode title or a core profile display_name (e.g. default renamed to
