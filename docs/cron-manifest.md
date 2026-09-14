@@ -35,6 +35,7 @@ file; restore them with `git checkout` if they too were wiped.
 | SSD keepalive touch (5m) | 5m | ssd-touch.py | no-agent | local |
 | GitOps Update Check | 0 9 * * * | gitops-update-monitor.sh | monitor | all |
 | Cron manifest verify (weekly) | 0 9 * * 0 | cron-manifest-verify.py | no-agent | all |
+| Verify DB regeneration (weekly) | 0 8 * * 1 | verify-db-regen-cron.sh | no-agent | all |
 <!-- cron-manifest-verify: end -->
 
 ### Notes
@@ -50,6 +51,12 @@ file; restore them with `git checkout` if they too were wiped.
 - **Cron manifest verify (weekly)** runs Sundays 09:00, delivers to all
   connected platforms. OK = silent-ish one-line heartbeat; differences =
   full missing/mismatched/extra report.
+- **Verify DB regeneration (weekly)** runs Mondays 08:00, delivers to all.
+  Wrapper (`verify-db-regen-cron.sh`) around `standards/scripts/verify-db-regeneration.sh`:
+  exit 0 = one-line OK heartbeat (DB rigenerabile); exit 1 = full report with
+  last ~20 lines (divergenze live-vs-rebuild); exit 2 = full report (errore:
+  seed rotto / DB assente). The wrapper always exits 0 so the cron streak stays
+  clean; stdout IS the signal. Runtime deps: python3 + standards repo seeds.
 
 ## Out of scope (tracked separately, not verified here)
 
