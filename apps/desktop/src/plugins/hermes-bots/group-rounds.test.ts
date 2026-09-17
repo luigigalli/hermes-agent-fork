@@ -291,6 +291,12 @@ describe('round lifecycle', () => {
   })
 })
 
+/** Strip the other-threads digest lines (Merk patch): the leakage invariant
+ *  is about delta content, not the 60-char heads the digest deliberately shows. */
+function stripDigest(prompt?: string): string {
+  return (prompt || '').replace(/\n\s*· thread [^\n]*/g, '')
+}
+
 describe('per-member delta', () => {
   it('feeds a second send only the NEW messages', async () => {
     const room = await loadRoom()
@@ -305,7 +311,9 @@ describe('per-member delta', () => {
     const second = room.gateway.calls.slice(firstCount).find(call => call.prompt.includes('second message'))
 
     expect(second).toBeDefined()
-    expect(second?.prompt).not.toContain('first message')
+    // Merk patch (digest agent-side): other-threads digest may surface a 60-char
+    // head — the invariant is no FULL delta leakage; strip digest lines first.
+    expect(stripDigest(second?.prompt || '')).not.toContain('first message')
   })
 
   it('keeps concurrent rooms sharing one member isolated in sessions, deltas and context', async () => {
@@ -345,11 +353,11 @@ describe('per-member delta', () => {
     expect(alphaSecond?.stored).toBe(alphaFirst?.stored)
     expect(betaSecond?.stored).toBe(betaFirst?.stored)
     expect(alphaSecond?.prompt).toContain('ALPHA_ONLY_2')
-    expect(alphaSecond?.prompt).not.toContain('ALPHA_ONLY_1')
-    expect(alphaSecond?.prompt).not.toContain('BETA_ONLY_2')
+    expect(stripDigest(alphaSecond?.prompt || '')).not.toContain('ALPHA_ONLY_1')
+    expect(stripDigest(alphaSecond?.prompt || '')).not.toContain('BETA_ONLY_2')
     expect(betaSecond?.prompt).toContain('BETA_ONLY_2')
-    expect(betaSecond?.prompt).not.toContain('BETA_ONLY_1')
-    expect(betaSecond?.prompt).not.toContain('ALPHA_ONLY_2')
+    expect(stripDigest(betaSecond?.prompt || '')).not.toContain('BETA_ONLY_1')
+    expect(stripDigest(betaSecond?.prompt || '')).not.toContain('ALPHA_ONLY_2')
 
     const alphaSession = room.gateway.sessions.get(String(alphaFirst?.stored))
     const betaSession = room.gateway.sessions.get(String(betaFirst?.stored))
@@ -378,7 +386,12 @@ describe('threads', () => {
 
   it('continues an explicit thread and scopes the member delta to it', async () => {
     const room = await loadRoom({
-      turn: ({ prompt }) => (prompt.includes('billing') ? 'On the billing fix.' : '(pass)')
+      // Merk patch: match only the delta section, not the other-threads digest
+      // (a real agent reacts to what it was SENT, not to a digest head).
+      turn: ({ prompt }) => {
+        const delta = prompt.split('New messages in the room')[1]?.split('Other open threads')[0] || ''
+        return delta.includes('billing') ? 'On the billing fix.' : '(pass)'
+      }
     })
 
     const member: GroupMember[] = [{ name: 'research', title: '' }]
@@ -395,7 +408,7 @@ describe('threads', () => {
 
     expect(again).toBe(billing)
     expect(followUp).toBeDefined()
-    expect(followUp?.prompt).not.toContain('research pricing')
+    expect(stripDigest(followUp?.prompt || '')).not.toContain('research pricing')
     expect(replies.length).toBeGreaterThanOrEqual(1)
     expect(replies.every(entry => entry.thread === billing)).toBe(true)
   })

@@ -1,4 +1,5 @@
 import { botHandle } from './data'
+import { groupThreadDigest } from './group-thread-pane'
 import { groupSpeakerLabel } from './group-chat'
 import { groupMemberKey } from './group-membership'
 import type { GroupMember, GroupMessage, GroupMessageAuthor } from './types'
@@ -71,12 +72,16 @@ interface GroupChatTurnPromptInput {
   groupName: string
   members: GroupMember[]
   viewer: GroupMember
+  /** Full room log (bounded projection) for the other-threads digest. */
+  fullLog?: GroupMessage[]
+  /** The thread that triggered this member's turn (excluded from the digest). */
+  currentThreadId?: null | string
 }
 
 /** The full per-turn payload for one member: participation rules + the room
  *  delta. Rules travel in the turn payload (not SOUL) so every existing bot
  *  can join a group chat without a profile migration. */
-export function buildGroupChatTurnPrompt({ groupName, members, viewer, deltaLines }: GroupChatTurnPromptInput) {
+export function buildGroupChatTurnPrompt({ groupName, members, viewer, deltaLines, fullLog, currentThreadId }: GroupChatTurnPromptInput) {
   const viewerKey = groupMemberKey(viewer)
   const peers = members.filter(m => groupMemberKey(m) !== viewerKey)
 
@@ -88,12 +93,17 @@ export function buildGroupChatTurnPrompt({ groupName, members, viewer, deltaLine
     })
     .join(', ')
 
+  const digest = groupThreadDigest(fullLog || [], currentThreadId)
+
   return [
     `[Group chat: "${groupName}"] You are @${botHandle(viewer.name, viewer)}, one participant in a group chat with ${peerNames || 'no one else yet'} and the user.`,
     '',
     'New messages in the room since your last turn (oldest first):',
     ...deltaLines.map(line => `  ${line}`),
     '',
+    ...(digest
+      ? ['', digest]
+      : []),
     'Rules for this room:',
     '- Reply with ONE conversational message ONLY if you have something new worth adding: build on what was just said, claim or hand off work, answer a question aimed at you, or report a real result. Keep chatter short (1-3 sentences) — but when you are delivering a result, an answer the user asked for, or substantive work, give it at full quality and length; never thin out real content to fit the room.',
     '- If you have nothing new to add, reply with exactly "(pass)". Passing is good — it lets the conversation settle.',

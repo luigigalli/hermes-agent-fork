@@ -37,6 +37,13 @@ import type { ClipboardEvent, DragEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { avatarColor, botAppearance, BotFace } from './avatar'
+import {
+  deriveGroupThreads,
+  groupThreadUnread,
+  markGroupThreadRead,
+  $groupThreadReads,
+  type GroupThreadSummary
+} from './group-thread-pane'
 import { isBackfilledFacePng } from './avatar-image'
 import {
   $botMeta,
@@ -711,6 +718,21 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
   const activityEvents: GroupActivityEntry[] = currentGroupActivity(group)
   const latestActivity = activityEvents.length ? activityEvents[activityEvents.length - 1] : null
 
+  // Thread pane (Merk patch, additive): the open-thread list ordered by last
+  // activity, with unread badges — makes the room's parallel topics VISIBLE
+  // without ever hiding timeline content (arrival-order invariant kept).
+  const [threadsOpen, setThreadsOpen] = useState(false)
+  const threadReads = useValue($groupThreadReads)
+  const activeThreadId = replyThread || null
+  const threads = useMemo(() => deriveGroupThreads(room.log || [], activeThreadId || undefined), [room.log, activeThreadId])
+  const activeThreadIdRef = activeThreadId || 'legacy'
+  const threadRows = threads.map(thread => {
+    const entries = (room.log || []).filter(entry => (entry.thread || 'legacy') === thread.id)
+    const unread = groupThreadUnread(threadReads[group]?.[thread.id], entries)
+    return { thread, unread }
+  })
+  const unreadTotal = threadRows.reduce((sum, row) => sum + row.unread, 0)
+
   // #94570 shell rewired onto the real primitive (#91868/#94569): the button
   // must stop the ROUND, not just spray per-member interrupts — without the
   // epoch bump + holds the loop marched on to the next member. Thread scope:
@@ -784,6 +806,75 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
           ) : (
             <div className="px-0.5 pb-0.5 text-[0.625rem] text-(--ui-text-quaternary)">{b.group.noActivityYet}</div>
           )}
+        </div>
+      ) : null}
+    </div>
+  )
+
+  // Thread pane (Merk patch): collapsed by default like Activity. The header
+  // row shows the open-thread count and the total unread badge; the expanded
+  // list orders threads newest-activity-first, each row shows head text,
+  // reply count and unread. Clicking a row OPENS that thread's reply box
+  // (setReplyThread) and marks it read — additive, nothing in the timeline
+  // is folded or reordered.
+  const threadsPanel = (
+    <div className="border-b border-(--ui-stroke-secondary)">
+      <div className="flex items-center gap-1">
+        <RowButton
+          aria-controls={`group-threads:${group}`}
+          aria-expanded={threadsOpen}
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-left text-[0.7rem] text-(--ui-text-quaternary) transition-colors hover:text-foreground"
+          onClick={() => setThreadsOpen(prev => !prev)}
+          title={threadsOpen ? b.group.hideThreads : b.group.showThreads}
+          type="button"
+        >
+          <Codicon className="shrink-0 text-[0.65rem]" name={threadsOpen ? 'chevron-down' : 'chevron-right'} />
+          <span className="truncate">{threadsOpen ? b.group.hideThreads : b.group.showThreads}</span>
+          {unreadTotal > 0 ? (
+            <span
+              className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white"
+            >
+              {unreadTotal}
+            </span>
+          ) : null}
+          <span className="shrink-0 text-[0.625rem] text-(--ui-text-quaternary)">
+            {threadRows.length}
+          </span>
+        </RowButton>
+      </div>
+      {threadsOpen ? (
+        <div aria-label={b.group.showThreads} className="grid gap-0.5 px-2.5 pb-1.5" id={`group-threads:${group}`}>
+          {threadRows.map(({ thread, unread }) => (
+            <button
+              className={cn(
+                'flex w-full items-center gap-2 rounded-md border px-2 py-1 text-left text-xs transition-colors',
+                thread.isActive
+                  ? 'border-(--ui-accent) text-foreground'
+                  : 'border-(--ui-stroke-secondary) text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover)'
+              )}
+              key={`threadrow:${thread.id}`}
+              onClick={() => {
+                setReplyThread(thread.id === 'legacy' ? null : thread.id)
+                markGroupThreadRead(group, thread.id, Date.now())
+              }}
+              title={b.group.openThread}
+              type="button"
+            >
+              <Codicon
+                className="shrink-0 text-[0.65rem]"
+                name={thread.id === 'legacy' ? 'comment-discussion' : 'git-pull-request'}
+              />
+              <span className="min-w-0 flex-1 truncate">{(thread.head || thread.lastText || '').replace(/\s+/g, ' ').slice(0, 70) || '(thread)'}</span>
+              <span className="shrink-0 text-[0.6rem] text-(--ui-text-quaternary)">
+                {thread.count} · {new Date(thread.lastAt).toLocaleTimeString()}
+              </span>
+              {unread > 0 ? (
+                <span className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white">
+                  {unread}
+                </span>
+              ) : null}
+            </button>
+          ))}
         </div>
       ) : null}
     </div>
@@ -1129,6 +1220,7 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
         </div>
       ) : null}
       {header}
+      {threadsPanel}
       <GroupHoldStatus
         holds={room.holds}
         memberLabel={member => displayName(member, botRosterMeta(member, allMeta))}
