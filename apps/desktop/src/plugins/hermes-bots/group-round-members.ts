@@ -123,7 +123,9 @@ function prepareGroupRoundMember(context: GroupRoundMemberContext, member: Group
     groupName: context.group,
     members,
     viewer: member,
-    deltaLines: formatGroupDeltaLines(visibleDelta, member, context.group)
+    deltaLines: formatGroupDeltaLines(visibleDelta, member, context.group),
+    fullLog: room.log,
+    currentThreadId: thread
   })
 
   // Images riding this delta (user attachments — member entries don't
@@ -301,6 +303,7 @@ export async function runGroupRoundMember(
   return spoke
 }
 
+<<<<<<< HEAD
 function authoredByMember(entry: GroupMessage, member: GroupMember): boolean {
   return entry?.from?.kind === 'member' && isGroupChatSelf(entry.from, member)
 }

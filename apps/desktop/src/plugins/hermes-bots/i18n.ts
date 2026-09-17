@@ -277,6 +277,8 @@ type BotsMessages = {
     replyInThread: string
     replyInThreadPlaceholder: string
     openThread: string
+    showThreads: string
+    hideThreads: string
     collapseThread: string
     collapseThreadLabel: string
     activity: string
@@ -722,6 +724,8 @@ const en: BotsMessages = {
     replyInThread: 'Reply in thread',
     replyInThreadPlaceholder: 'Reply in thread…',
     openThread: 'Open this thread',
+    showThreads: 'Show threads',
+    hideThreads: 'Hide threads',
     collapseThread: 'Collapse thread',
     collapseThreadLabel: 'Collapse this thread',
     activity: 'Activity',
@@ -1159,6 +1163,8 @@ const ja: BotsMessages = {
     replyInThread: 'スレッドで返信',
     replyInThreadPlaceholder: 'スレッドで返信…',
     openThread: 'このスレッドを開く',
+    showThreads: 'スレッドを表示',
+    hideThreads: 'スレッドを隠す',
     collapseThread: 'スレッドを折りたたむ',
     collapseThreadLabel: 'このスレッドを折りたたむ',
     activity: 'アクティビティ',
@@ -1587,6 +1593,8 @@ const zh: BotsMessages = {
     replyInThread: '在帖子中回复',
     replyInThreadPlaceholder: '在帖子中回复…',
     openThread: '打开此帖子',
+    showThreads: '显示话题',
+    hideThreads: '隐藏话题',
     collapseThread: '收起帖子',
     collapseThreadLabel: '收起此帖子',
     activity: '活动',
@@ -2011,6 +2019,8 @@ const zhHant: BotsMessages = {
     replyInThread: '在討論串中回覆',
     replyInThreadPlaceholder: '在討論串中回覆…',
     openThread: '開啟此討論串',
+    showThreads: '顯示話題',
+    hideThreads: '隱藏話題',
     collapseThread: '收合討論串',
     collapseThreadLabel: '收合此討論串',
     activity: '活動',
