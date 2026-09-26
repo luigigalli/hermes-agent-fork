@@ -160,14 +160,14 @@ def _desktop_packaged_executable_in(release_dir: Path) -> Optional[Path]:
     stage-and-swap staging dir (#86443).
     """
     if sys.platform == "darwin":
-        candidates = list(release_dir.glob("mac*/Hermes.app/Contents/MacOS/Hermes"))
+        candidates = list(release_dir.glob("mac*/Convergence.app/Contents/MacOS/Convergence"))
     elif sys.platform == "win32":
         candidates = [
-            release_dir / d / "Hermes.exe" for d in ("win-unpacked", "win-ia32-unpacked", "win-arm64-unpacked")
+            release_dir / d / "Convergence.exe" for d in ("win-unpacked", "win-ia32-unpacked", "win-arm64-unpacked")
         ]
     else:
         candidates = [
-            release_dir / d / n for d in ("linux-unpacked", "linux-arm64-unpacked") for n in ("hermes", "Hermes")
+            release_dir / d / n for d in ("linux-unpacked", "linux-arm64-unpacked") for n in ("convergence", "Convergence")
         ]
 
     existing = [p for p in candidates if p.exists()]
