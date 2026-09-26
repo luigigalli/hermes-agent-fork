@@ -1,13 +1,13 @@
 {
-  "name": "hermes",
-  "productName": "Hermes",
+  "name": "convergence",
+  "productName": "Convergence",
   "private": true,
   "version": "0.0.0",
-  "description": "Native desktop shell for Hermes Agent.",
+  "description": "Convergence — Native desktop shell for Hermes Agent.",
   "author": "Nous Research",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NousResearch/hermes-agent.git"
+    "url": "git+https://github.com/luigigalli/hermes-agent-fork.git"
   },
   "type": "module",
   "main": "dist/electron-main.mjs",

@@ -303,7 +303,6 @@ export async function runGroupRoundMember(
   return spoke
 }
 
-<<<<<<< HEAD
 function authoredByMember(entry: GroupMessage, member: GroupMember): boolean {
   return entry?.from?.kind === 'member' && isGroupChatSelf(entry.from, member)
 }
