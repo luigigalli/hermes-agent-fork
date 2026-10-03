@@ -9,7 +9,8 @@
 'use strict'
 
 const variants = {
-  '': { display: 'Hermes', kebab: 'hermes', pascal: 'Hermes' },
+  // Convergence rebrand (decisione user 26/9): appId com.nousresearch.convergence
+  '': { display: 'Convergence', kebab: 'convergence', pascal: 'Convergence' },
   light: {
     display: 'Hermes Light',
     kebab: 'hermes-light',
