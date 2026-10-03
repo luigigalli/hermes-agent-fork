@@ -38,13 +38,6 @@ import type { ClipboardEvent, DragEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { avatarColor, botAppearance, BotFace } from './avatar'
-import {
-  deriveGroupThreads,
-  groupThreadUnread,
-  markGroupThreadRead,
-  $groupThreadReads,
-  type GroupThreadSummary
-} from './group-thread-pane'
 import { isBackfilledFacePng } from './avatar-image'
 import {
   $botMeta,
@@ -108,6 +101,7 @@ import {
 } from './group-panes'
 import type { GroupComposerDraft, GroupDraftSetter } from './group-panes'
 import { groupReplyMentionTag, sendToGroupChat, stopGroupThread } from './group-rounds'
+import { $groupThreadReads, deriveGroupThreads, groupThreadUnread, markGroupThreadRead } from './group-thread-pane'
 import { clearGroupClarify, renameGroupClarify } from './group-turns'
 import { botsText, useBots } from './i18n'
 import { displayName, slugifyProfileName } from './labels'
@@ -991,13 +985,19 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
   const [threadsOpen, setThreadsOpen] = useState(false)
   const threadReads = useValue($groupThreadReads)
   const activeThreadId = replyThread || null
-  const threads = useMemo(() => deriveGroupThreads(room.log || [], activeThreadId || undefined), [room.log, activeThreadId])
+  const threads = useMemo(
+    () => deriveGroupThreads(room.log || [], activeThreadId || undefined),
+    [room.log, activeThreadId]
+  )
   const activeThreadIdRef = activeThreadId || 'legacy'
+
   const threadRows = threads.map(thread => {
     const entries = (room.log || []).filter(entry => (entry.thread || 'legacy') === thread.id)
     const unread = groupThreadUnread(threadReads[group]?.[thread.id], entries)
+
     return { thread, unread }
   })
+
   const unreadTotal = threadRows.reduce((sum, row) => sum + row.unread, 0)
 
   // #94570 shell rewired onto the real primitive (#91868/#94569): the button
@@ -1099,15 +1099,11 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
           <Codicon className="shrink-0 text-[0.65rem]" name={threadsOpen ? 'chevron-down' : 'chevron-right'} />
           <span className="truncate">{threadsOpen ? b.group.hideThreads : b.group.showThreads}</span>
           {unreadTotal > 0 ? (
-            <span
-              className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white"
-            >
+            <span className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white">
               {unreadTotal}
             </span>
           ) : null}
-          <span className="shrink-0 text-[0.625rem] text-(--ui-text-quaternary)">
-            {threadRows.length}
-          </span>
+          <span className="shrink-0 text-[0.625rem] text-(--ui-text-quaternary)">{threadRows.length}</span>
         </RowButton>
       </div>
       {threadsOpen ? (
@@ -1132,7 +1128,9 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
                 className="shrink-0 text-[0.65rem]"
                 name={thread.id === 'legacy' ? 'comment-discussion' : 'git-pull-request'}
               />
-              <span className="min-w-0 flex-1 truncate">{(thread.head || thread.lastText || '').replace(/\s+/g, ' ').slice(0, 70) || '(thread)'}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {(thread.head || thread.lastText || '').replace(/\s+/g, ' ').slice(0, 70) || '(thread)'}
+              </span>
               <span className="shrink-0 text-[0.6rem] text-(--ui-text-quaternary)">
                 {thread.count} · {new Date(thread.lastAt).toLocaleTimeString()}
               </span>

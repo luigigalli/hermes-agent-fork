@@ -736,6 +736,7 @@ describe('threads', () => {
       // (a real agent reacts to what it was SENT, not to a digest head).
       turn: ({ prompt }) => {
         const delta = prompt.split('New messages in the room')[1]?.split('Other open threads')[0] || ''
+
         return delta.includes('billing') ? 'On the billing fix.' : '(pass)'
       }
     })
@@ -786,6 +787,7 @@ describe('threads', () => {
     // from transcript rows first — the invariant is no DELTA leakage.
     const stripDigestRows = (messages: Array<{ content: string }>) =>
       messages.map(message => ({ ...message, content: stripDigest(message.content) }))
+
     const alphaMessages = stripDigestRows(room.gateway.sessions.get(String(alphaCall?.stored))?.messages || [])
     const betaMessages = stripDigestRows(room.gateway.sessions.get(String(betaCall?.stored))?.messages || [])
 

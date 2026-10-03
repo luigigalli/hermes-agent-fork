@@ -71,7 +71,10 @@ async function commitGroupChatRoster(group: string, previous: RosterRow[], seate
     heldMessages: without(room.heldMessages, key => key),
     // Merk patch: remember where the log was when each member left, so a
     // re-add's other-threads digest starts from that point (clean restart).
-    digestCutoffs: { ...room.digestCutoffs, ...Object.fromEntries(removed.map(member => [groupMemberKey(member), (room.log || []).length])) },
+    digestCutoffs: {
+      ...room.digestCutoffs,
+      ...Object.fromEntries(removed.map(member => [groupMemberKey(member), (room.log || []).length]))
+    },
     holds: without(room.holds, key => key),
     stranded: without(room.stranded, key => key),
     sessions: without(room.sessions, groupSessionMemberKey),

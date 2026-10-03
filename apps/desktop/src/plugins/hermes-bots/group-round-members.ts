@@ -130,8 +130,7 @@ function prepareGroupRoundMember(context: GroupRoundMemberContext, member: Group
     // digest, and a re-added member restarts clean at its removal cutoff
     // (Merk patch over upstream's clean-restart removal semantics).
     fullLog: room.log.filter(
-      (e: GroupMessage) =>
-        (!e.id || !heldSet.has(e.id)) && (!cut || room.log.indexOf(e) >= cut)
+      (e: GroupMessage) => (!e.id || !heldSet.has(e.id)) && (!cut || room.log.indexOf(e) >= cut)
     ),
     currentThreadId: thread
   })
