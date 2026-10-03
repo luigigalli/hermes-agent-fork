@@ -55,7 +55,7 @@ const displayName = buildCommit
 
 const kebabSuffix = buildCommit ? `-${buildCommit}` : canary ? '-canary' : ''
 const pascalSuffix = buildCommit ? `Commit${buildCommit}` : canary ? 'Canary' : ''
-const cliName = `${light ? 'hermes-light' : 'hermes'}${kebabSuffix}`
+const cliName = `${name === variants['bundled'] ? 'hermes' : name.kebab}${kebabSuffix}`
 if (store && (canary || buildCommit)) {
   throw new Error('Store packaging is only eligible for stable releases')
 }

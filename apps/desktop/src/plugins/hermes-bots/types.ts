@@ -204,6 +204,11 @@ export interface GroupChat {
   /** Room-entry ids consumed while a member was held, replayed into that
    *  member's next visible turn. Keyed by the durable member key. */
   heldMessages?: Record<string, string[]>
+  /** Per-member digest cutoff (log length) captured when the member was
+   *  removed from the room: on a re-add the other-threads digest only covers
+   *  log entries from that point, so the member restarts clean (Merk patch —
+   *  upstream clears heldMessages on removal; the digest must follow). */
+  digestCutoffs?: Record<string, number>
   holds?: Record<string, GroupHold>
   image?: null | string
   log: GroupMessage[]

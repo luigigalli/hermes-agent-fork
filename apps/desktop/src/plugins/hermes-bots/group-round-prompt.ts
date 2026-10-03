@@ -6,8 +6,8 @@ import {
   GROUP_CHAT_HISTORY_LINE_CHARS,
   groupSpeakerLabel
 } from './group-chat'
-import { groupThreadDigest } from './group-thread-pane'
 import { groupMemberKey } from './group-membership'
+import { groupThreadDigest } from './group-thread-pane'
 import type { GroupMember, GroupMessage, GroupMessageAuthor } from './types'
 
 // Openers of Hermes' own control frames (the mid-turn steer marker, the compaction

@@ -781,8 +781,13 @@ describe('threads', () => {
     expect(Object.keys(room.chat.$groupChats.get().Bleed.sessions || {})).toHaveLength(2)
 
     // And neither backend transcript ever saw the other thread's prompt.
-    const alphaMessages = room.gateway.sessions.get(String(alphaCall?.stored))?.messages || []
-    const betaMessages = room.gateway.sessions.get(String(betaCall?.stored))?.messages || []
+    // Merk patch (other-threads digest): the digest deliberately shows 60-char
+    // heads of the other threads inside the turn prompt, so strip digest lines
+    // from transcript rows first — the invariant is no DELTA leakage.
+    const stripDigestRows = (messages: Array<{ content: string }>) =>
+      messages.map(message => ({ ...message, content: stripDigest(message.content) }))
+    const alphaMessages = stripDigestRows(room.gateway.sessions.get(String(alphaCall?.stored))?.messages || [])
+    const betaMessages = stripDigestRows(room.gateway.sessions.get(String(betaCall?.stored))?.messages || [])
 
     expect(alphaMessages.some(message => message.content.includes('BETA_TOPIC'))).toBe(false)
     expect(betaMessages.some(message => message.content.includes('ALPHA_TOPIC'))).toBe(false)

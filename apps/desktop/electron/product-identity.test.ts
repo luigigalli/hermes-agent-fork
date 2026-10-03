@@ -118,7 +118,7 @@ test('nonstable runtime pins userData before the app name can change', async ():
 })
 
 test.each([
-  [undefined, 'Hermes', 'hermes', 'latest', 'canary'],
+  [undefined, 'Convergence', 'convergence', 'latest', 'canary'],
   ['bundled', 'Hermes Agent', 'hermes', 'latest', 'canary'],
   ['light', 'Hermes Light', 'hermes-light', 'light', 'light-canary']
 ] as const)(
@@ -254,7 +254,7 @@ test('packaging isolates boot metadata and executable names without renaming rel
     const artifact: ReturnType<typeof appIdentity> = appIdentity(fileURLToPath(new URL('../', import.meta.url)))
     assert.equal(artifact.name, identity.artifactNamePascal)
     assert.equal(artifact.identity.msixAppIdWithOrg, config.msix.identityName)
-    assert.deepEqual(config.protocols[0].schemes, ['hermes'])
+    assert.deepEqual(config.protocols[0].schemes, ['convergence'])
 
     if (build !== 'canary') {
       assert.equal(config.publish, null)

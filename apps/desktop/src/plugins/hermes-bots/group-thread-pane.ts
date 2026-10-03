@@ -67,10 +67,12 @@ export function groupThreadUnread(
 
 /** Mark a thread read: stamp the room's watermark for that thread to now. */
 export function markGroupThreadRead(roomKey: string, threadId: string, atMs: number) {
-  $groupThreadReads.set(prev => ({
+  // Upstream atom.set takes the next value directly (no updater form).
+  const prev = $groupThreadReads.get() || {}
+  $groupThreadReads.set({
     ...prev,
     [roomKey]: { ...(prev[roomKey] || {}), [threadId]: atMs }
-  }))
+  })
 }
 
 /** The thread digest line for a member prompt — agent-side visibility into
