@@ -167,7 +167,7 @@ class MCPServerTransportMixin:
         return caps is None or getattr(caps, "tools", None) is not None
 
     def _session_kwargs(self) -> dict:
-        """ClientSession kwargs: sampling, elicitation, notification + logging callbacks."""
+        """ClientSession kwargs: client identity, sampling, elicitation, notification + logging callbacks."""
         kwargs = {}
         for handler in (self._sampling, self._elicitation):
             if handler:
@@ -176,6 +176,11 @@ class MCPServerTransportMixin:
             kwargs["message_handler"] = self._make_message_handler()
         if _core._MCP_LOGGING_CALLBACK_SUPPORTED:
             kwargs["logging_callback"] = self._make_logging_callback()
+        if _core._client_session_accepts("client_info"):
+            # Servers key logs/behaviour on clientInfo; the SDK default is "mcp"/"0.1.0".
+            from mcp.types import Implementation
+            from hermes_cli.version_info import get_version_info
+            kwargs["client_info"] = Implementation(name="hermes-agent", version=get_version_info().base_version)
         return kwargs
 
     async def _negotiate_session(self, session, connect_timeout: float):
@@ -232,7 +237,7 @@ class MCPServerTransportMixin:
         keeps later requests legacy-shaped (envelope and MCP-Protocol-Version header), the form the
         handshake itself just proved the server accepts. The returned result keeps the server's own
         version for logging/diagnostics."""
-        import mcp.types as types  # late: keeps the SDK import lazy
+        from mcp import types  # late: keeps the SDK import lazy
         offered = _core.LATEST_HANDSHAKE_VERSION
         build_caps = getattr(session, "_build_capabilities", None)
         capabilities = build_caps(offered) if callable(build_caps) else types.ClientCapabilities()
@@ -291,11 +296,11 @@ class MCPServerTransportMixin:
 
     # ------------------------------------------------------------------ stdio
 
-    def _track_spawned_children(self, new_pids: Set[int]) -> None:
+    def _track_spawned_children(self, new_pids: set[int]) -> None:
         """Ledger the freshly spawned stdio children (pids, pgids, machine spawn ledger). pgids are
         captured while alive (getpgid fails after exit; the sweep needs them for reparented descendants)."""
-        new_pgids: Dict[int, int] = {}
-        new_starts: Dict[int, int] = {}
+        new_pgids: dict[int, int] = {}
+        new_starts: dict[int, int] = {}
         for pid in new_pids:
             try:
                 new_pgids[pid] = os.getpgid(pid)
@@ -329,7 +334,7 @@ class MCPServerTransportMixin:
         # _kill_orphaned_mcp_children) still reap as before; this only covers when they never run.
         _core._update_death_supervisor("register", new_pgids.values())
 
-    def _release_spawned_children(self, new_pids: Set[int]) -> None:
+    def _release_spawned_children(self, new_pids: set[int]) -> None:
         """Drop the ledger entries; a child (or its pgroup) still alive means SDK teardown failed
         (common on mid-way cancel on Linux: setsid() children escape) — mark it orphaned for the sweep."""
         from gateway.status import _pid_exists
