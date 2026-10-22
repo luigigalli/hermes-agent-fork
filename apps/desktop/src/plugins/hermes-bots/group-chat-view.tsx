@@ -39,13 +39,6 @@ import type { ClipboardEvent, DragEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { avatarColor, botAppearance, BotFace } from './avatar'
-import {
-  deriveGroupThreads,
-  groupThreadUnread,
-  markGroupThreadRead,
-  $groupThreadReads,
-  type GroupThreadSummary
-} from './group-thread-pane'
 import { isBackfilledFacePng } from './avatar-image'
 import { groupCreationSource, groupExecutionMode } from './canonical-group-capabilities'
 import type { GroupExecutionMode } from './canonical-group-capabilities'
@@ -123,6 +116,7 @@ import {
 } from './group-panes'
 import type { GroupComposerDraft, GroupDraftSetter } from './group-panes'
 import { groupReplyMentionTag, sendToGroupChat, stopGroupThread } from './group-rounds'
+import { $groupThreadReads, deriveGroupThreads, groupThreadUnread, markGroupThreadRead } from './group-thread-pane'
 import { clearGroupClarify, renameGroupClarify } from './group-turns'
 import { botsText, useBots } from './i18n'
 import { displayName, slugifyProfileName } from './labels'
@@ -596,9 +590,16 @@ export function GroupChatWorkspace(props: GroupChatWorkspaceProps) {
   const bindings = useValue($canonicalGroupBindings)
   const connectionId = useValue(host.state.connectionId)
   const profile = useValue(host.state.profile)
-  const binding = canonicalGroupBindingFor(bindings, { connectionId: connectionId ?? '', profile }, props.group, props.origin ?? 'name')
+  const binding = canonicalGroupBindingFor(
+    bindings,
+    { connectionId: connectionId ?? '', profile },
+    props.group,
+    props.origin ?? 'name'
+  )
 
-  if (binding) {return <CanonicalGroupWorkspace binding={binding} onBack={props.onBack} visible={props.visible} />}
+  if (binding) {
+    return <CanonicalGroupWorkspace binding={binding} onBack={props.onBack} visible={props.visible} />
+  }
 
   return <GroupExecutionGate {...props} />
 }
@@ -621,7 +622,9 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
   const [lookupAttempt, setLookupAttempt] = useState(0)
   const lookupStatus = lookup?.source === source ? lookup.status : 'pending'
   useEffect(() => {
-    if (mode !== 'canonical') {return}
+    if (mode !== 'canonical') {
+      return
+    }
     let cancelled = false
     setLookup({ source, status: 'pending' })
     setError('')
@@ -629,9 +632,15 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
     const origin = props.origin ?? 'name'
     void resolveCanonicalGroup(route, props.group, origin)
       .then(resolved => {
-        if (cancelled) {return}
+        if (cancelled) {
+          return
+        }
 
-        if (resolved) {publishCanonicalGroup(route, props.group, resolved, origin)} else {setLookup({ source, status: 'missing' })}
+        if (resolved) {
+          publishCanonicalGroup(route, props.group, resolved, origin)
+        } else {
+          setLookup({ source, status: 'missing' })
+        }
       })
       .catch(e => {
         if (!cancelled) {
@@ -640,7 +649,9 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
         }
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [mode, source, props.group, props.origin, lookupAttempt, connectionId, profile])
   useEffect(() => {
     let cancelled = false
@@ -654,7 +665,11 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
     }
 
     void canonicalGroupRequest<unknown>({ connectionId: connectionId ?? '', profile }, 'groups.capabilities')
-      .then(result => { if (!cancelled) {setCapability({ source, mode: groupExecutionMode(result) })} })
+      .then(result => {
+        if (!cancelled) {
+          setCapability({ source, mode: groupExecutionMode(result) })
+        }
+      })
       .catch(e => {
         if (!cancelled) {
           setCapability({ source, mode: 'unavailable' })
@@ -662,46 +677,76 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
         }
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [connectionId, profile, gateway, source])
 
-  if (mode === 'legacy') {return <LegacyGroupChatWorkspace {...props} />}
+  if (mode === 'legacy') {
+    return <LegacyGroupChatWorkspace {...props} />
+  }
 
   // A `canonical:` key names an existing room; it never seeds a new one.
-  const canCreate = mode === 'canonical' && lookupStatus === 'missing' && canonicalGroupKeyRoute(props.group, props.origin ?? 'name') === null
+  const canCreate =
+    mode === 'canonical' &&
+    lookupStatus === 'missing' &&
+    canonicalGroupKeyRoute(props.group, props.origin ?? 'name') === null
 
-  const message = mode !== 'canonical'
-    ? mode === 'unavailable' ? b.canonical.driverUnavailable : 'Checking group driver…'
-    : lookupStatus === 'pending' ? t.gatewayGroupOpen.opening
-      : lookupStatus === 'failed' ? t.gatewayGroupOpen.lookupFailed
-        : canCreate ? 'This is a legacy Desktop room. Start a gateway-owned group with these members; the old history stays here and is not replayed.'
-          : t.gatewayGroupOpen.missing
+  const message =
+    mode !== 'canonical'
+      ? mode === 'unavailable'
+        ? b.canonical.driverUnavailable
+        : 'Checking group driver…'
+      : lookupStatus === 'pending'
+        ? t.gatewayGroupOpen.opening
+        : lookupStatus === 'failed'
+          ? t.gatewayGroupOpen.lookupFailed
+          : canCreate
+            ? 'This is a legacy Desktop room. Start a gateway-owned group with these members; the old history stays here and is not replayed.'
+            : t.gatewayGroupOpen.missing
 
-  return <div className="grid gap-3 p-3">
-    <h2>{props.group}</h2>
-    <p>{message}</p>
-    {error && <p role="alert">{error}</p>}
-    {mode === 'canonical' && lookupStatus !== 'pending' && !canCreate &&
-      <Button onClick={() => setLookupAttempt(value => value + 1)} variant="secondary">{t.common.retry}</Button>}
-    <Button disabled={!canCreate || busy} onClick={() => {
-      const route = { connectionId: connectionId ?? '', profile }
+  return (
+    <div className="grid gap-3 p-3">
+      <h2>{props.group}</h2>
+      <p>{message}</p>
+      {error && <p role="alert">{error}</p>}
+      {mode === 'canonical' && lookupStatus !== 'pending' && !canCreate && (
+        <Button onClick={() => setLookupAttempt(value => value + 1)} variant="secondary">
+          {t.common.retry}
+        </Button>
+      )}
+      <Button
+        disabled={!canCreate || busy}
+        onClick={() => {
+          const route = { connectionId: connectionId ?? '', profile }
 
-      const sourceCurrent = groupCreationSource(route, activationEpoch)
+          const sourceCurrent = groupCreationSource(route, activationEpoch)
 
-      if (!canCreate || !sourceCurrent()) {
-        setError(b.canonical.driverUnavailable)
+          if (!canCreate || !sourceCurrent()) {
+            setError(b.canonical.driverUnavailable)
 
-        return
-      }
+            return
+          }
 
-      setBusy(true)
-      void createCanonicalGroup(route, props.group, props.members)
-        .then(({ room }) => {
-          if (sourceCurrent()) {openGroupChat(registerCanonicalGroup(route, room), 'key')}
-        })
-        .catch(e => { if (sourceCurrent()) {setError(String(e))} }).finally(() => setBusy(false))
-    }}>Start gateway group</Button>
-  </div>
+          setBusy(true)
+          void createCanonicalGroup(route, props.group, props.members)
+            .then(({ room }) => {
+              if (sourceCurrent()) {
+                openGroupChat(registerCanonicalGroup(route, room), 'key')
+              }
+            })
+            .catch(e => {
+              if (sourceCurrent()) {
+                setError(String(e))
+              }
+            })
+            .finally(() => setBusy(false))
+        }}
+      >
+        Start gateway group
+      </Button>
+    </div>
+  )
 }
 
 function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: GroupChatWorkspaceProps) {
@@ -1121,13 +1166,19 @@ function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: Gr
   const [threadsOpen, setThreadsOpen] = useState(false)
   const threadReads = useValue($groupThreadReads)
   const activeThreadId = replyThread || null
-  const threads = useMemo(() => deriveGroupThreads(room.log || [], activeThreadId || undefined), [room.log, activeThreadId])
+  const threads = useMemo(
+    () => deriveGroupThreads(room.log || [], activeThreadId || undefined),
+    [room.log, activeThreadId]
+  )
   const activeThreadIdRef = activeThreadId || 'legacy'
+
   const threadRows = threads.map(thread => {
     const entries = (room.log || []).filter(entry => (entry.thread || 'legacy') === thread.id)
     const unread = groupThreadUnread(threadReads[group]?.[thread.id], entries)
+
     return { thread, unread }
   })
+
   const unreadTotal = threadRows.reduce((sum, row) => sum + row.unread, 0)
 
   // #94570 shell rewired onto the real primitive (#91868/#94569): the button
@@ -1229,15 +1280,11 @@ function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: Gr
           <Codicon className="shrink-0 text-[0.65rem]" name={threadsOpen ? 'chevron-down' : 'chevron-right'} />
           <span className="truncate">{threadsOpen ? b.group.hideThreads : b.group.showThreads}</span>
           {unreadTotal > 0 ? (
-            <span
-              className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white"
-            >
+            <span className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white">
               {unreadTotal}
             </span>
           ) : null}
-          <span className="shrink-0 text-[0.625rem] text-(--ui-text-quaternary)">
-            {threadRows.length}
-          </span>
+          <span className="shrink-0 text-[0.625rem] text-(--ui-text-quaternary)">{threadRows.length}</span>
         </RowButton>
       </div>
       {threadsOpen ? (
@@ -1262,7 +1309,9 @@ function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: Gr
                 className="shrink-0 text-[0.65rem]"
                 name={thread.id === 'legacy' ? 'comment-discussion' : 'git-pull-request'}
               />
-              <span className="min-w-0 flex-1 truncate">{(thread.head || thread.lastText || '').replace(/\s+/g, ' ').slice(0, 70) || '(thread)'}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {(thread.head || thread.lastText || '').replace(/\s+/g, ' ').slice(0, 70) || '(thread)'}
+              </span>
               <span className="shrink-0 text-[0.6rem] text-(--ui-text-quaternary)">
                 {thread.count} · {new Date(thread.lastAt).toLocaleTimeString()}
               </span>
@@ -1824,7 +1873,13 @@ function GroupChatMainView({ group, origin }: GroupChatMainViewProps) {
   const visible = useValue($visible)
 
   return (
-    <GroupChatWorkspace group={group} members={members} onBack={() => closeGroupChatMainTab(group)} origin={origin} visible={visible} />
+    <GroupChatWorkspace
+      group={group}
+      members={members}
+      onBack={() => closeGroupChatMainTab(group)}
+      origin={origin}
+      visible={visible}
+    />
   )
 }
 

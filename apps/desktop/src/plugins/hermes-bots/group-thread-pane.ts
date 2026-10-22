@@ -12,6 +12,7 @@
  * member prompt) rides the same derivation below.
  */
 import { atom } from '@hermes/plugin-sdk'
+
 import type { GroupChat, GroupMessage } from './types'
 
 export interface GroupThreadSummary {
@@ -37,6 +38,7 @@ export function deriveGroupThreads(log: GroupMessage[], activeThreadId?: string)
   for (const entry of log || []) {
     const id = entry?.thread || 'legacy'
     const current = byId.get(id)
+
     if (!current) {
       byId.set(id, { head: entry.text || '', count: 1, lastAt: entry.at || 0, lastText: entry.text || '' })
     } else {
@@ -57,11 +59,11 @@ export function deriveGroupThreads(log: GroupMessage[], activeThreadId?: string)
 export const $groupThreadReads = atom<Record<string, Record<string, number>>>({})
 
 /** Count entries in a thread newer than the last-seen watermark. */
-export function groupThreadUnread(
-  watermark: number | undefined,
-  entries: GroupMessage[]
-): number {
-  if (watermark === undefined) return 0
+export function groupThreadUnread(watermark: number | undefined, entries: GroupMessage[]): number {
+  if (watermark === undefined) {
+    return 0
+  }
+
   return entries.filter(entry => (entry.at || 0) > watermark).length
 }
 
@@ -88,12 +90,15 @@ export function groupThreadDigest(
     .filter(t => t.id !== (currentThreadId || 'legacy'))
     .slice(0, 6)
 
-  if (!threads.length) return ''
+  if (!threads.length) {
+    return ''
+  }
 
   const lines = threads
     .filter(thread => thread.count > 0)
     .map(thread => {
       const label = (thread.head || thread.lastText || '').replace(/\s+/g, ' ').slice(0, 60)
+
       return `  · thread ${thread.id}: “${label}” · ${thread.count} msgs · last ${new Date(
         thread.lastAt
       ).toLocaleTimeString()}`
