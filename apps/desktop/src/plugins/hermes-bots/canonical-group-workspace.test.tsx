@@ -19,6 +19,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
     usePluginI18n: () => (key: string) =>
       CANONICAL_GROUP_LOCALES.en[key.replace('canonical.', '') as keyof typeof CANONICAL_GROUP_LOCALES.en] ?? key,
     Button: (p: ComponentProps<'button'>) => <button {...p} />,
+    Codicon: ({ name }: { name?: string }) => <span data-icon={name ?? ''} />,
     host: { ...gateway.host, requestProfile: request }
   }
 })

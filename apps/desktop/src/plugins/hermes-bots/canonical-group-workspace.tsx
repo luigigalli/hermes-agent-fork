@@ -1,11 +1,15 @@
-import { Button, Textarea } from '@hermes/plugin-sdk'
-import { useEffect, useRef, useState } from 'react'
+import { Button, Codicon, Textarea, useValue } from '@hermes/plugin-sdk'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { CanonicalGroupAttachments } from './canonical-group-attachments'
-import { type CanonicalGroupEvent, CanonicalGroupHistory } from './canonical-group-history'
+import {
+  type CanonicalGroupEvent,
+  CanonicalGroupHistory
+} from './canonical-group-history'
 import { useCanonicalGroupLabels } from './canonical-group-labels'
 import { prepareCanonicalGroupSend, readCanonicalGroupSend, retireCanonicalGroupSend } from './canonical-group-send'
 import type { PreparedCanonicalGroupSend } from './canonical-group-send'
+import { canonicalThreadUnread, groupMessageSections } from './canonical-group-threads'
 import { actCanonicalGroup, canonicalGroupRequest } from './canonical-groups'
 import type {
   CanonicalGroupBinding,
@@ -13,6 +17,7 @@ import type {
   CanonicalRoom,
   CanonicalRoomMember
 } from './canonical-groups'
+import { $groupThreadReads, markGroupThreadRead } from './group-thread-pane'
 
 type RoomEvent = CanonicalGroupEvent
 interface Attachment {
@@ -93,6 +98,50 @@ function CanonicalRoomView({
   // This window's typed draft while it sends the room's one pending intent another window prepared.
   const heldDraft = useRef<{ text: string; attachments: Attachment[] } | null>(null)
 
+  // Thread view state (fork UX on the canonical workspace, deposit-spec 19/10):
+  // folding is a VIEW affordance only — the log is never mutated, re-dated or
+  // reordered by any of it.
+  const [threadPaneOpen, setThreadPaneOpen] = useState(false)
+  const [focusThreadId, setFocusThreadId] = useState<string | null>(null)
+  const [manualFolds, setManualFolds] = useState<ReadonlySet<string>>(() => new Set())
+  const [newThreadCreator, setNewThreadCreator] = useState<string | null>(null)
+  const [newThreadDraft, setNewThreadDraft] = useState('')
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const threadReads = useValue($groupThreadReads)
+
+  const roomKey = binding.roomId
+  const sections = useMemo(() => groupMessageSections(events as CanonicalGroupEvent[]), [events])
+
+  const unreadByThread = useMemo(() => {
+    const reads = threadReads?.[roomKey] || {}
+    const out: Record<string, number> = {}
+
+    for (const section of sections) {
+      out[section.threadId] = canonicalThreadUnread(reads[section.threadId], section)
+    }
+
+    return out
+  }, [sections, threadReads, roomKey])
+
+  const focusMode = threadPaneOpen || focusThreadId !== null
+
+  const foldedThreadIds = useMemo<ReadonlySet<string>>(() => {
+    // Focus mode: the chosen topic unfolds, everything else folds to its
+    // header; a pane open without a chosen topic folds the WHOLE room (the
+    // index is about to pick one). Whole-log mode keeps the manual folds.
+    if (focusThreadId !== null) {
+      return new Set(sections.map(section => section.threadId).filter(threadId => threadId !== focusThreadId))
+    }
+
+    if (threadPaneOpen) {
+      return new Set(sections.map(section => section.threadId))
+    }
+
+    return manualFolds
+  }, [focusThreadId, manualFolds, sections, threadPaneOpen])
+
+  const unreadTotal = Object.values(unreadByThread).reduce((sum, count) => sum + count, 0)
+
   // eslint-disable-next-line no-restricted-syntax -- journal hydration and mounted lifetime, not a reactive store mirror
   useEffect(() => {
     alive.current = true
@@ -136,16 +185,19 @@ function CanonicalRoomView({
         'groups.log',
         { room_id: binding.roomId, since_seq: cursor, limit: 100 }
       )
+
       log.push(...page.events)
 
       if (!page.has_more) {
         break
       }
+
       const next = page.events.at(-1)?.seq
 
       if (!next || next <= cursor) {
         throw new Error(labels.invalidLogCursor)
       }
+
       cursor = next
     }
 
@@ -160,6 +212,7 @@ function CanonicalRoomView({
     if (!visible) {
       return
     }
+
     let cancelled = false
     let timer: ReturnType<typeof setTimeout>
 
@@ -192,6 +245,7 @@ function CanonicalRoomView({
     if (busyRef.current) {
       return
     }
+
     busyRef.current = true
     setBusy(true)
     setError('')
@@ -225,6 +279,7 @@ function CanonicalRoomView({
     ) {
       return
     }
+
     void mutate(async () => {
       const exact = pending ?? (await prepareCanonicalGroupSend(binding, { text: draft, attachments }))
 
@@ -253,10 +308,180 @@ function CanonicalRoomView({
     })
   }
 
+  /** One explicit-thread send (New Thread mint, reply-in-thread). The room keeps
+   *  ONE unresolved intent; when the journal slot holds another window's
+   *  intent, this send refuses and points at restoring it — exact words are
+   *  authoritative, never silently replaced by a different thread's text. */
+  const threadSend = (text: string, threadId: string, onDone?: () => void) => {
+    const body = text.trim()
+    const started = Boolean(body) && restored
+
+    if (!started || busyRef.current || uploading || !state?.driver_status || !threadId) {
+      return
+    }
+
+    void mutate(async () => {
+      if (pending) {
+        throw new Error(labels.unconfirmedSend)
+      }
+
+      const exact = await prepareCanonicalGroupSend(binding, { text: body, thread_id: threadId })
+
+      if (exact.params.payload.thread_id !== threadId || exact.params.payload.text !== body) {
+        throw new Error(labels.unconfirmedSend)
+      }
+
+      await canonicalGroupRequest(exact.binding, 'groups.send', exact.params)
+      await retireCanonicalGroupSend(exact.binding, exact.params.event_id)
+      onDone?.()
+    })
+  }
+
   const act = (action: CanonicalPendingAction, choice?: 'once' | 'deny') =>
     mutate(() => actCanonicalGroup(binding, action, choice))
 
+  // --- thread view affordances -------------------------------------------------
+
+  const markThreadRead = (threadId: string) => markGroupThreadRead(roomKey, threadId, Date.now())
+
+  const toggleThreadPane = () => {
+    // Leaving the pane returns the room to the whole-log flow; the first open
+    // folds everything until a topic is picked (whole-log mode ends).
+    setFocusThreadId(null)
+    setThreadPaneOpen(!threadPaneOpen)
+  }
+
+  const openThread = (threadId: string) => {
+    setFocusThreadId(threadId)
+    markThreadRead(threadId)
+  }
+
+  // Focus mode's header click = open that topic; whole-log's = manual fold.
+  const toggleThread = (threadId: string) => {
+    if (focusThreadId !== null) {
+      openThread(threadId)
+
+      return
+    }
+
+    setManualFolds(prev => {
+      const next = new Set(prev)
+
+      if (next.has(threadId)) {
+        next.delete(threadId)
+      } else {
+        next.add(threadId)
+      }
+
+      return next
+    })
+  }
+
+  const startNewThread = () => {
+    // Mint at reveal: the id is stable across re-renders and retry of the same
+    // composer, so a slow send can never change the topic it opened.
+    setNewThreadCreator(crypto.randomUUID())
+    setNewThreadDraft('')
+  }
+
+  const submitNewThread = () => {
+    const threadId = newThreadCreator
+
+    if (!threadId) {
+      return
+    }
+
+    threadSend(newThreadDraft, threadId, () => {
+      setNewThreadCreator(null)
+      setNewThreadDraft('')
+      setThreadPaneOpen(false)
+      setFocusThreadId(threadId)
+      markThreadRead(threadId)
+    })
+  }
+
+  const replyThreadId = newThreadCreator ? null : focusThreadId
+
+  const replySlot = (
+    <form
+      className="grid gap-1 px-2 pb-1"
+      onSubmit={event => {
+        event.preventDefault()
+        const threadId = replyThreadId
+
+        if (!threadId) {
+          return
+        }
+
+        threadSend(replyDrafts[threadId] || '', threadId, () => {
+          setReplyDrafts(prev => ({ ...prev, [threadId]: '' }))
+          markThreadRead(threadId)
+        })
+      }}
+    >
+      <Textarea
+        aria-label={labels.replyInThread}
+        autoFocus
+        className="min-w-0 flex-1"
+        disabled={!restored || busy || uploading || !state?.driver_status}
+        onChange={e => setReplyDrafts(prev => ({ ...prev, [replyThreadId ?? '']: e.target.value }))}
+        value={(replyThreadId && replyDrafts[replyThreadId]) || ''}
+      />
+      <Button disabled={!restored || busy || uploading || !state?.driver_status} size="sm" type="submit">
+        {labels.send}
+      </Button>
+    </form>
+  )
+
   const composerLocked = !restored || busy || !!pending
+
+  const threadIndex = sections.length ? (
+    <div className="border-b border-(--ui-stroke-secondary)">
+      <button
+        aria-controls={`canonical-threads:${binding.roomId}`}
+        aria-expanded={threadPaneOpen}
+        className="flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-[0.7rem] text-(--ui-text-quaternary) transition-colors hover:text-foreground"
+        onClick={toggleThreadPane}
+        type="button"
+      >
+        <Codicon className="shrink-0 text-[0.65rem]" name={threadPaneOpen ? 'chevron-down' : 'chevron-right'} />
+        <span className="truncate">{threadPaneOpen ? labels.hideThreads : labels.showThreads}</span>
+        {unreadTotal > 0 && (
+          <span className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white">
+            {unreadTotal}
+          </span>
+        )}
+        <span className="shrink-0 text-[0.625rem] text-(--ui-text-quaternary)">{sections.length}</span>
+      </button>
+      {threadPaneOpen && (
+        <div
+          aria-label={labels.showThreads}
+          className="grid gap-0.5 px-2.5 pb-1.5"
+          id={`canonical-threads:${binding.roomId}`}
+        >
+          {sections.map(section => (
+            <button
+              className="flex w-full items-center gap-2 rounded-md border border-(--ui-stroke-secondary) px-2 py-1 text-left text-xs text-(--ui-text-tertiary) transition-colors hover:bg-(--chrome-action-hover) hover:text-foreground"
+              key={section.threadId}
+              onClick={() => openThread(section.threadId)}
+              title={labels.openThread}
+              type="button"
+            >
+              <span className="min-w-0 flex-1 truncate">
+                {(section.head || labels.threadUntitled).replace(/\s+/g, ' ').slice(0, 70)}
+              </span>
+              <span className="shrink-0 text-[0.6rem] text-(--ui-text-quaternary)">{section.count}</span>
+              {(unreadByThread[section.threadId] || 0) > 0 && (
+                <span className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white">
+                  {unreadByThread[section.threadId]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : null
 
   return (
     <section className="flex h-full min-h-0 flex-col gap-3 p-3">
@@ -285,8 +510,53 @@ function CanonicalRoomView({
       )}
       {error && <div role="alert">{error}</div>}
       {state && !state.driver_status && <p>{labels.driverUnavailable}</p>}
+      {threadIndex}
+      {newThreadCreator && (
+        <form
+          className="grid gap-1 border-b border-(--ui-stroke-secondary) p-2"
+          data-testid="group-new-thread-creator"
+          onSubmit={event => {
+            event.preventDefault()
+            submitNewThread()
+          }}
+        >
+          <Textarea
+            aria-label={labels.newThread}
+            autoFocus
+            className="min-w-0 flex-1"
+            disabled={!restored || busy || uploading || !state?.driver_status}
+            onChange={e => setNewThreadDraft(e.target.value)}
+            placeholder={labels.newThreadPlaceholder}
+            value={newThreadDraft}
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              disabled={!restored || busy || uploading || !newThreadDraft.trim() || !state?.driver_status}
+              size="sm"
+              type="submit"
+            >
+              {labels.send}
+            </Button>
+            <Button onClick={() => setNewThreadCreator(null)} size="sm">
+              {labels.cancel}
+            </Button>
+          </div>
+        </form>
+      )}
       <div className="min-h-0 flex-1 overflow-auto" role="log">
-        <CanonicalGroupHistory binding={binding} disabled={!visible} events={events} members={state?.room.members} />
+        <CanonicalGroupHistory
+          binding={binding}
+          disabled={!visible}
+          events={events}
+          members={state?.room.members}
+          threadView={{
+            foldedThreadIds,
+            onToggleThread: toggleThread,
+            replySlot,
+            replyThreadId,
+            unreadByThread
+          }}
+        />
       </div>
       {(state?.driver_status?.pending_actions || []).map(action => (
         <div
@@ -333,40 +603,52 @@ function CanonicalRoomView({
         </div>
       )}
       {pending && <p role="status">{labels.restoredPendingSend}</p>}
-      <form
-        className="flex gap-2"
-        onSubmit={event => {
-          event.preventDefault()
-          send()
-        }}
-      >
-        <CanonicalGroupAttachments
-          attachments={attachments}
-          binding={binding}
-          disabled={composerLocked}
-          onChange={setAttachments}
-          onUploadingChange={setUploading}
-        />
-        <Textarea
-          aria-label={labels.groupMessage}
-          className="min-w-0 flex-1"
-          disabled={composerLocked}
-          onChange={e => setDraft(e.target.value)}
-          value={draft}
-        />
-        <Button
-          disabled={
-            !restored ||
-            busy ||
-            uploading ||
-            (!pending && !draft.trim() && !attachments.length) ||
-            !state?.driver_status
-          }
-          type="submit"
+      {focusMode ? (
+        // A live composer rides the open thread's flow in the timeline; the
+        // bottom bar stays the New Thread LAUNCHER, never a live composer.
+        <div className="border-t border-(--ui-stroke-secondary) p-2">
+          <Button onClick={startNewThread}>{labels.newThread}</Button>
+        </div>
+      ) : (
+        <form
+          className="flex items-end gap-2"
+          onSubmit={event => {
+            event.preventDefault()
+            send()
+          }}
         >
-          {pending ? labels.retry : labels.send}
-        </Button>
-      </form>
+          <CanonicalGroupAttachments
+            attachments={attachments}
+            binding={binding}
+            disabled={composerLocked}
+            onChange={setAttachments}
+            onUploadingChange={setUploading}
+          />
+          <Textarea
+            aria-label={labels.groupMessage}
+            className="min-w-0 flex-1"
+            disabled={composerLocked}
+            onChange={e => setDraft(e.target.value)}
+            value={draft}
+          />
+          <Button
+            className="shrink-0"
+            disabled={
+              !restored ||
+              busy ||
+              uploading ||
+              (!pending && !draft.trim() && !attachments.length) ||
+              !state?.driver_status
+            }
+            type="submit"
+          >
+            {pending ? labels.retry : labels.send}
+          </Button>
+          <Button className="shrink-0" onClick={startNewThread} type="button">
+            {labels.newThread}
+          </Button>
+        </form>
+      )}
     </section>
   )
 }

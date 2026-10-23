@@ -8,9 +8,15 @@ const request = vi.hoisted(() => vi.fn())
 vi.mock('@hermes/plugin-sdk', async () => {
   const { en } = await import('@/i18n/en')
   const { Textarea } = await import('@/components/ui/textarea')
+  // atom/useValue ride along because the workspace wires the thread-pane read
+  // store (fork thread UX re-landed on the canonical protocol).
+  const { atom } = await import('nanostores')
+  const useStore = await import('@nanostores/react')
 
   return {
     Textarea,
+    atom,
+    useValue: useStore.useStore,
     MessageTextContent: undefined,
     Streamdown: undefined,
     host: { requestProfile: request },

@@ -25,6 +25,15 @@ export interface CanonicalGroupMessages {
   attachFiles: string
   removeAttachment: string
   uploadFailed: string
+  showThreads: string
+  hideThreads: string
+  openThread: string
+  expandThread: string
+  collapseThread: string
+  newThread: string
+  newThreadPlaceholder: string
+  replyInThread: string
+  threadUntitled: string
 }
 
 export const CANONICAL_GROUP_LOCALES = {
@@ -54,7 +63,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: 'Group message',
     attachFiles: 'Attach files',
     removeAttachment: 'Remove attachment',
-    uploadFailed: 'Upload failed'
+    uploadFailed: 'Upload failed',
+    showThreads: 'Show threads',
+    hideThreads: 'Hide threads',
+    openThread: 'Open this thread',
+    expandThread: 'Expand thread',
+    collapseThread: 'Collapse thread',
+    newThread: 'New Thread',
+    newThreadPlaceholder: 'New thread…',
+    replyInThread: 'Reply in thread',
+    threadUntitled: '(untitled thread)'
   },
   ja: {
     roomStopped: 'グループが停止しました',
@@ -82,7 +100,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: 'グループメッセージ',
     attachFiles: 'ファイルを添付',
     removeAttachment: '添付ファイルを削除',
-    uploadFailed: 'アップロードに失敗しました'
+    uploadFailed: 'アップロードに失敗しました',
+    showThreads: 'スレッドを表示',
+    hideThreads: 'スレッドを隠す',
+    openThread: 'このスレッドを開く',
+    expandThread: 'スレッドを展開',
+    collapseThread: 'スレッドを折りたたむ',
+    newThread: '新しいスレッド',
+    newThreadPlaceholder: '新しいスレッド…',
+    replyInThread: 'スレッドで返信',
+    threadUntitled: '（タイトルなしのスレッド）'
   },
   zh: {
     roomStopped: '群组已停止',
@@ -110,7 +137,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: '群组消息',
     attachFiles: '附加文件',
     removeAttachment: '移除附件',
-    uploadFailed: '上传失败'
+    uploadFailed: '上传失败',
+    showThreads: '显示话题',
+    hideThreads: '隐藏话题',
+    openThread: '打开此话题',
+    expandThread: '展开话题',
+    collapseThread: '折叠话题',
+    newThread: '新建话题',
+    newThreadPlaceholder: '新话题…',
+    replyInThread: '在话题内回复',
+    threadUntitled: '（未命名话题）'
   },
   'zh-hant': {
     roomStopped: '群組已停止',
@@ -138,7 +174,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: '群組訊息',
     attachFiles: '附加檔案',
     removeAttachment: '移除附件',
-    uploadFailed: '上傳失敗'
+    uploadFailed: '上傳失敗',
+    showThreads: '顯示話題',
+    hideThreads: '隱藏話題',
+    openThread: '開啟此話題',
+    expandThread: '展開話題',
+    collapseThread: '摺疊話題',
+    newThread: '新增話題',
+    newThreadPlaceholder: '新話題…',
+    replyInThread: '在話題內回覆',
+    threadUntitled: '（未命名話題）'
   },
   ar: {
     roomStopped: 'أُوقفت المجموعة',
@@ -166,7 +211,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: 'رسالة المجموعة',
     attachFiles: 'إرفاق ملفات',
     removeAttachment: 'إزالة المرفق',
-    uploadFailed: 'فشل الرفع'
+    uploadFailed: 'فشل الرفع',
+    showThreads: 'إظهار المواضيع',
+    hideThreads: 'إخفاء المواضيع',
+    openThread: 'افتح هذا الموضوع',
+    expandThread: 'توسيع الموضوع',
+    collapseThread: 'طي الموضوع',
+    newThread: 'موضوع جديد',
+    newThreadPlaceholder: 'موضوع جديد…',
+    replyInThread: 'الرد في الموضوع',
+    threadUntitled: '（موضوع بدون عنوان）'
   },
   ru: {
     roomStopped: 'Группа остановлена',
@@ -197,7 +251,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: 'Сообщение группе',
     attachFiles: 'Прикрепить файлы',
     removeAttachment: 'Удалить вложение',
-    uploadFailed: 'Не удалось загрузить файл'
+    uploadFailed: 'Не удалось загрузить файл',
+    showThreads: 'Показать темы',
+    hideThreads: 'Скрыть темы',
+    openThread: 'Открыть эту тему',
+    expandThread: 'Развернуть тему',
+    collapseThread: 'Свернуть тему',
+    newThread: 'Новая тема',
+    newThreadPlaceholder: 'Новая тема…',
+    replyInThread: 'Ответить в теме',
+    threadUntitled: '（тема без названия）'
   },
   fr: {
     roomStopped: 'Groupe arrêté',
@@ -226,7 +289,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: 'Message de groupe',
     attachFiles: 'Joindre des fichiers',
     removeAttachment: 'Retirer la pièce jointe',
-    uploadFailed: 'Échec du téléversement'
+    uploadFailed: 'Échec du téléversement',
+    showThreads: 'Afficher les fils',
+    hideThreads: 'Masquer les fils',
+    openThread: 'Ouvrir ce fil',
+    expandThread: 'Déplier le fil',
+    collapseThread: 'Replier le fil',
+    newThread: 'Nouveau fil',
+    newThreadPlaceholder: 'Nouveau fil…',
+    replyInThread: 'Répondre dans le fil',
+    threadUntitled: '（fil sans titre）'
   },
   de: {
     roomStopped: 'Gruppe angehalten',
@@ -257,7 +329,16 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: 'Gruppennachricht',
     attachFiles: 'Dateien anhängen',
     removeAttachment: 'Anhang entfernen',
-    uploadFailed: 'Hochladen fehlgeschlagen'
+    uploadFailed: 'Hochladen fehlgeschlagen',
+    showThreads: 'Threads anzeigen',
+    hideThreads: 'Threads ausblenden',
+    openThread: 'Diesen Thread öffnen',
+    expandThread: 'Thread aufklappen',
+    collapseThread: 'Thread einklappen',
+    newThread: 'Neuer Thread',
+    newThreadPlaceholder: 'Neuer Thread…',
+    replyInThread: 'Im Thread antworten',
+    threadUntitled: '（Thread ohne Titel）'
   },
   es: {
     roomStopped: 'Grupo detenido',
@@ -285,6 +366,15 @@ export const CANONICAL_GROUP_LOCALES = {
     groupMessage: 'Mensaje de grupo',
     attachFiles: 'Adjuntar archivos',
     removeAttachment: 'Quitar adjunto',
-    uploadFailed: 'Error al subir'
+    uploadFailed: 'Error al subir',
+    showThreads: 'Mostrar hilos',
+    hideThreads: 'Ocultar hilos',
+    openThread: 'Abrir este hilo',
+    expandThread: 'Desplegar hilo',
+    collapseThread: 'Plegar hilo',
+    newThread: 'Nuevo hilo',
+    newThreadPlaceholder: 'Nuevo hilo…',
+    replyInThread: 'Responder en el hilo',
+    threadUntitled: '（hilo sin título）'
   }
 } satisfies Record<string, CanonicalGroupMessages>
