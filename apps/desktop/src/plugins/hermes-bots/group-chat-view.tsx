@@ -42,6 +42,7 @@ import { avatarColor, botAppearance, BotFace } from './avatar'
 import { isBackfilledFacePng } from './avatar-image'
 import { groupCreationSource, groupExecutionMode } from './canonical-group-capabilities'
 import type { GroupExecutionMode } from './canonical-group-capabilities'
+import { CanonicalGroupLegacyHistory } from './canonical-group-legacy-history'
 import type { CanonicalGroupOrigin } from './canonical-group-registry'
 import {
   $canonicalGroupBindings,
@@ -607,6 +608,9 @@ export function GroupChatWorkspace(props: GroupChatWorkspaceProps) {
 function GroupExecutionGate(props: GroupChatWorkspaceProps) {
   const b = useBots()
   const { t } = useI18n()
+  // The room's durable local record, for the read-only archive pane (the projection
+  // contract: reading only — the gate never writes the store, t_97e2e058).
+  const archiveRooms: Record<string, GroupChatRoom> = useValue($groupChats)
   const connectionId = useValue(host.state.connectionId)
   const profile = useValue(host.state.profile)
   const gateway = useValue(host.state.gateway)
@@ -702,13 +706,21 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
         : lookupStatus === 'failed'
           ? t.gatewayGroupOpen.lookupFailed
           : canCreate
-            ? 'This is a legacy Desktop room. Start a gateway-owned group with these members; the old history stays here and is not replayed.'
+            ? b.legacyGate.legacyRoom
             : t.gatewayGroupOpen.missing
 
   return (
     <div className="grid gap-3 p-3">
-      <h2>{props.group}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="min-w-0 truncate text-sm font-medium">{props.group}</h2>
+        <span className="shrink-0 rounded-full border border-(--ui-stroke-secondary) px-1.5 text-[0.6rem] text-(--ui-text-tertiary)">
+          {b.canonical.roomKindLegacy}
+        </span>
+      </div>
       <p>{message}</p>
+      {!canonicalGroupKeyRoute(props.group, props.origin ?? 'name') && (
+        <CanonicalGroupLegacyHistory room={archiveRooms[props.group]} showWhenEmpty />
+      )}
       {error && <p role="alert">{error}</p>}
       {mode === 'canonical' && lookupStatus !== 'pending' && !canCreate && (
         <Button onClick={() => setLookupAttempt(value => value + 1)} variant="secondary">
@@ -743,7 +755,7 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
             .finally(() => setBusy(false))
         }}
       >
-        Start gateway group
+        {b.legacyGate.start}
       </Button>
     </div>
   )

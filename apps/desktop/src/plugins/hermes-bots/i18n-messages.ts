@@ -6,6 +6,11 @@ import { type CanonicalGroupMessages } from './canonical-group-locales'
 
 export type BotsMessages = {
   canonical: { [K in keyof CanonicalGroupMessages]: string }
+  /** The gate page shown for legacy Desktop rooms (read-only archive pane + start action). */
+  legacyGate: {
+    legacyRoom: string
+    start: string
+  }
   /** Left rail: the bot + group-chat roster. */
   editor: {
     fullConfigHint: string

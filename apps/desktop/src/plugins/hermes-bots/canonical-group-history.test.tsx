@@ -3,6 +3,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import { expectDownloaded, observeDownloads } from './canonical-download-test-utils'
+import { translateBots } from './i18n-test-helper'
 
 const request = vi.hoisted(() => vi.fn())
 vi.mock('@hermes/plugin-sdk', async () => {
@@ -19,6 +20,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
     host: { requestProfile: request },
     useValue: useStore.useStore,
     useI18n: () => ({ locale: 'en', t: en }),
+    usePluginI18n: () => translateBots,
     Button: (props: ComponentProps<'button'>) => <button {...props} />,
     MessageTextContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
     Streamdown: ({ children }: { children: ReactNode }) => <div data-testid="markdown">{children}</div>,

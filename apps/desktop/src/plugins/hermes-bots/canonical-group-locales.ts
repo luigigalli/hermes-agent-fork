@@ -34,6 +34,13 @@ export interface CanonicalGroupMessages {
   newThreadPlaceholder: string
   replyInThread: string
   threadUntitled: string
+  /** Read-only archive pane (projection of the room's past, no writes). */
+  archiveTitle: string
+  archiveEmpty: string
+  archiveSource: string
+  /** Room-kind indicator: gateway-owned vs legacy Desktop room. */
+  roomKindGateway: string
+  roomKindLegacy: string
 }
 
 export const CANONICAL_GROUP_LOCALES = {
@@ -72,7 +79,13 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: 'New Thread',
     newThreadPlaceholder: 'New thread…',
     replyInThread: 'Reply in thread',
-    threadUntitled: '(untitled thread)'
+    threadUntitled: '(untitled thread)',
+    archiveTitle: 'Past threads (read-only)',
+    archiveEmpty: "This room's archived history is not in this Desktop's local copies.",
+    archiveSource:
+      'Read-only projection: the archived past stays untouched in its stores (local copies and gateway mirror).',
+    roomKindGateway: 'Gateway room',
+    roomKindLegacy: 'Legacy Desktop room'
   },
   ja: {
     roomStopped: 'グループが停止しました',
@@ -109,7 +122,13 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: '新しいスレッド',
     newThreadPlaceholder: '新しいスレッド…',
     replyInThread: 'スレッドで返信',
-    threadUntitled: '（タイトルなしのスレッド）'
+    threadUntitled: '（タイトルなしのスレッド）',
+    archiveTitle: '過去のスレッド（読み取り専用）',
+    archiveEmpty: 'このルームのアーカイブ履歴は、このデスクトップのローカルコピーにはありません。',
+    archiveSource:
+      '読み取り専用の投影です。アーカイブされた過去は、保存先（ローカルコピーとゲートウェイのミラー）でそのまま残ります。',
+    roomKindGateway: 'ゲートウェイルーム',
+    roomKindLegacy: 'レガシーデスクトップルーム'
   },
   zh: {
     roomStopped: '群组已停止',
@@ -146,7 +165,12 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: '新建话题',
     newThreadPlaceholder: '新话题…',
     replyInThread: '在话题内回复',
-    threadUntitled: '（未命名话题）'
+    threadUntitled: '（未命名话题）',
+    archiveTitle: '历史话题（只读）',
+    archiveEmpty: '此群组的存档历史不在此桌面的本地副本中。',
+    archiveSource: '只读投影：存档的过去原样保存在其存储中（本地副本和网关镜像）。',
+    roomKindGateway: '网关房间',
+    roomKindLegacy: '旧版桌面房间'
   },
   'zh-hant': {
     roomStopped: '群組已停止',
@@ -183,7 +207,12 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: '新增話題',
     newThreadPlaceholder: '新話題…',
     replyInThread: '在話題內回覆',
-    threadUntitled: '（未命名話題）'
+    threadUntitled: '（未命名話題）',
+    archiveTitle: '歷史話題（唯讀）',
+    archiveEmpty: '此群組的封存歷史不在此桌面的本機副本中。',
+    archiveSource: '唯讀投影：封存的過去原樣保存在其儲存中（本機副本和閘道鏡像）。',
+    roomKindGateway: '閘道房間',
+    roomKindLegacy: '舊版桌面房間'
   },
   ar: {
     roomStopped: 'أُوقفت المجموعة',
@@ -220,7 +249,12 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: 'موضوع جديد',
     newThreadPlaceholder: 'موضوع جديد…',
     replyInThread: 'الرد في الموضوع',
-    threadUntitled: '（موضوع بدون عنوان）'
+    threadUntitled: '（موضوع بدون عنوان）',
+    archiveTitle: 'المواضيع السابقة (للقراءة فقط)',
+    archiveEmpty: 'سجل هذه الغرفة المؤرشف غير موجود في النسخ المحلية لهذا الجهاز.',
+    archiveSource: 'إسقاط للقراءة فقط: يبقى السجل المؤرشف كما هو في مخازنه (النسخ المحلية ومرآة البوابة).',
+    roomKindGateway: 'غرفة البوابة',
+    roomKindLegacy: 'غرفة سطح مكتب قديمة'
   },
   ru: {
     roomStopped: 'Группа остановлена',
@@ -260,7 +294,13 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: 'Новая тема',
     newThreadPlaceholder: 'Новая тема…',
     replyInThread: 'Ответить в теме',
-    threadUntitled: '（тема без названия）'
+    threadUntitled: '（тема без названия）',
+    archiveTitle: 'Прошлые темы (только чтение)',
+    archiveEmpty: 'Архивная история этой комнаты отсутствует в локальных копиях этого рабочего стола.',
+    archiveSource:
+      'Проекция только для чтения: архивное прошлое остаётся нетронутым в своих хранилищах (локальные копии и зеркало шлюза).',
+    roomKindGateway: 'Комната шлюза',
+    roomKindLegacy: 'Устаревшая комната рабочего стола'
   },
   fr: {
     roomStopped: 'Groupe arrêté',
@@ -298,7 +338,13 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: 'Nouveau fil',
     newThreadPlaceholder: 'Nouveau fil…',
     replyInThread: 'Répondre dans le fil',
-    threadUntitled: '（fil sans titre）'
+    threadUntitled: '（fil sans titre）',
+    archiveTitle: 'Fils passés (lecture seule)',
+    archiveEmpty: "L'historique archivé de ce salon ne figure pas dans les copies locales de ce bureau.",
+    archiveSource:
+      'Projection en lecture seule : le passé archivé reste intact dans ses magasins (copies locales et miroir de la passerelle).',
+    roomKindGateway: 'Salon passerelle',
+    roomKindLegacy: 'Salon de bureau legacy'
   },
   de: {
     roomStopped: 'Gruppe angehalten',
@@ -338,7 +384,13 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: 'Neuer Thread',
     newThreadPlaceholder: 'Neuer Thread…',
     replyInThread: 'Im Thread antworten',
-    threadUntitled: '（Thread ohne Titel）'
+    threadUntitled: '（Thread ohne Titel）',
+    archiveTitle: 'Frühere Threads (schreibgeschützt)',
+    archiveEmpty: 'Der archivierte Verlauf dieses Raums ist nicht in den lokalen Kopien dieses Desktops.',
+    archiveSource:
+      'Schreibgeschützte Projektion: Der archivierte Verlauf bleibt unverändert in seinen Speichern (lokale Kopien und Gateway-Mirror).',
+    roomKindGateway: 'Gateway-Raum',
+    roomKindLegacy: 'Legacy-Desktop-Raum'
   },
   es: {
     roomStopped: 'Grupo detenido',
@@ -375,6 +427,64 @@ export const CANONICAL_GROUP_LOCALES = {
     newThread: 'Nuevo hilo',
     newThreadPlaceholder: 'Nuevo hilo…',
     replyInThread: 'Responder en el hilo',
-    threadUntitled: '（hilo sin título）'
+    threadUntitled: '（hilo sin título）',
+    archiveTitle: 'Hilos anteriores (solo lectura)',
+    archiveEmpty: 'El historial archivado de esta sala no está en las copias locales de este escritorio.',
+    archiveSource:
+      'Proyección de solo lectura: el pasado archivado permanece intacto en sus almacenes (copias locales y espejo de la pasarela).',
+    roomKindGateway: 'Sala de pasarela',
+    roomKindLegacy: 'Sala de escritorio heredada'
   }
 } satisfies Record<string, CanonicalGroupMessages>
+
+/** Italian, the user's configured display language (config `display.language:
+ *  it` — before this registration that id fell back to the 'en' bundle). It
+ *  rides the runtime language-pack surface the plugin registers in
+ *  `plugin.register` (`ctx.i18n.registerAppLocale`, see
+ *  canonical-group-italian-pack.ts) and is NOT a bundled catalog locale: the
+ *  plugin's group copy is fully Italian, the rest of the app catalog falls
+ *  back to English until real translations ship. */
+export const CANONICAL_GROUP_LOCALE_ITALIAN = {
+  roomStopped: 'Gruppo fermato',
+  roomDisbanded: 'Gruppo sciolto',
+  authorityLost: 'Gestore del gruppo cambiato',
+  workLimitReached: 'Limite di lavoro del gruppo raggiunto',
+  turnFailed: 'Turno fallito',
+  turnCancelled: 'Turno annullato',
+  turnDeferred: 'Turno rimandato',
+  memberUnavailable: 'Membro non disponibile',
+  members: 'Membri',
+  refreshGroups: 'Aggiorna gruppi del gateway',
+  loadingGroup: 'Caricamento gruppo…',
+  loadingGroups: 'Caricamento gruppi del gateway…',
+  emptyGroups: 'Nessun gruppo del gateway trovato.',
+  driverUnavailable: 'Driver del gruppo non disponibile. Aggiorna o riconnetti il gateway proprietario.',
+  invalidLogCursor: 'Cursore del log della room non valido',
+  allowOnce: 'Consenti una volta',
+  deny: 'Nega',
+  discardUnknown: "Scarta il lavoro dall'esito sconosciuto",
+  discardWarning: 'Effetti collaterali possono essere già avvenuti. Lo scarto non li annulla.',
+  confirmDiscard: 'Conferma lo scarto',
+  unconfirmedSend:
+    "L'invio precedente è non confermato. Riprova il suo testo originale prima di inviare un altro messaggio.",
+  restoredPendingSend: 'Un invio non confermato è stato ripristinato. Riprovalo prima di inviare un altro messaggio.',
+  groupMessage: 'Messaggio di gruppo',
+  attachFiles: 'Allega file',
+  removeAttachment: 'Rimuovi allegato',
+  uploadFailed: 'Caricamento non riuscito',
+  showThreads: 'Mostra thread',
+  hideThreads: 'Nascondi thread',
+  openThread: 'Apri questo thread',
+  expandThread: 'Espandi il thread',
+  collapseThread: 'Ripiega il thread',
+  newThread: 'Nuovo thread',
+  newThreadPlaceholder: 'Nuovo thread…',
+  replyInThread: 'Rispondi nel thread',
+  threadUntitled: '(thread senza titolo)',
+  archiveTitle: 'Thread passati (sola lettura)',
+  archiveEmpty: 'La storia archiviata di questa room non è nelle copie locali di questo Desktop.',
+  archiveSource:
+    'Proiezione in sola lettura: la storia archiviata resta intatta nei suoi archivi (copie locali e mirror del gateway).',
+  roomKindGateway: 'Room del gateway',
+  roomKindLegacy: 'Room desktop legacy'
+} satisfies CanonicalGroupMessages

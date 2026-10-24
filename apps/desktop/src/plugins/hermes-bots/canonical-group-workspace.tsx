@@ -2,11 +2,9 @@ import { Button, Codicon, Textarea, useValue } from '@hermes/plugin-sdk'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { CanonicalGroupAttachments } from './canonical-group-attachments'
-import {
-  type CanonicalGroupEvent,
-  CanonicalGroupHistory
-} from './canonical-group-history'
+import { type CanonicalGroupEvent, CanonicalGroupHistory } from './canonical-group-history'
 import { useCanonicalGroupLabels } from './canonical-group-labels'
+import { CanonicalGroupLegacyHistory } from './canonical-group-legacy-history'
 import { prepareCanonicalGroupSend, readCanonicalGroupSend, retireCanonicalGroupSend } from './canonical-group-send'
 import type { PreparedCanonicalGroupSend } from './canonical-group-send'
 import { canonicalThreadUnread, groupMessageSections } from './canonical-group-threads'
@@ -17,6 +15,7 @@ import type {
   CanonicalRoom,
   CanonicalRoomMember
 } from './canonical-groups'
+import { $groupChats } from './group-chat'
 import { $groupThreadReads, markGroupThreadRead } from './group-thread-pane'
 
 type RoomEvent = CanonicalGroupEvent
@@ -108,8 +107,13 @@ function CanonicalRoomView({
   const [newThreadDraft, setNewThreadDraft] = useState('')
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
   const threadReads = useValue($groupThreadReads)
+  // The room's archived past, read-only (durable renderer copy + the mirror
+  // the sync engine unions into it). Read access only — this view never
+  // writes the store (projection contract, t_97e2e058).
+  const archiveRooms = useValue($groupChats)
 
   const roomKey = binding.roomId
+  const roomName = state?.room.name || binding.roomName || ''
   const sections = useMemo(() => groupMessageSections(events as CanonicalGroupEvent[]), [events])
 
   const unreadByThread = useMemo(() => {
@@ -488,7 +492,12 @@ function CanonicalRoomView({
       <header className="flex items-center gap-2">
         {onBack && <Button onClick={onBack}>{labels.back}</Button>}
         <div className="min-w-0">
-          <h2 className="text-sm font-medium">{state?.room.name || labels.loadingGroup}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="truncate text-sm font-medium">{state?.room.name || labels.loadingGroup}</h2>
+            <span className="shrink-0 rounded-full border border-(--ui-stroke-secondary) px-1.5 text-[0.6rem] text-(--ui-text-tertiary)">
+              {labels.roomKindGateway}
+            </span>
+          </div>
           <CanonicalGroupRoster label={labels.members} members={state?.room.members} />
         </div>
         <Button
@@ -510,6 +519,7 @@ function CanonicalRoomView({
       )}
       {error && <div role="alert">{error}</div>}
       {state && !state.driver_status && <p>{labels.driverUnavailable}</p>}
+      <CanonicalGroupLegacyHistory room={roomName ? archiveRooms[roomName] : undefined} />
       {threadIndex}
       {newThreadCreator && (
         <form
