@@ -1,5 +1,6 @@
 import { host } from '@hermes/plugin-sdk'
 
+import { GROUP_CHAT_MAX_MEMBERS } from './group-chat'
 import type { GroupMember } from './types'
 
 export interface CanonicalGroupRoute {
@@ -47,6 +48,7 @@ export function captureCanonicalGroupRoute(): CanonicalGroupRoute {
   if (connectionId === null) {
     throw new Error('Canonical groups require an explicit connection')
   }
+
   const route = { connectionId, profile: host.state.profile.get() }
   requireRoute(route)
 
@@ -107,21 +109,14 @@ export async function discoverCanonicalGroups(
   return { driver: capabilities.driver === true, rooms }
 }
 
-export async function createCanonicalGroup(
-  route: CanonicalGroupRoute,
-  name: string,
-  members: GroupMember[]
-): Promise<{ binding: CanonicalGroupBinding; room: CanonicalRoom }> {
-  requireRoute(route)
-
-  if (!name.trim() || members.length < 2 || members.length > 6) {
-    throw new Error('A canonical group needs a name and two to six members')
-  }
-
+/** The exact roster mapping `groups.create` (and now member updates) send: same
+ *  authority-connection rule, unique profiles, non-reserved handles and the
+ *  local-target shape the driver's roster validation accepts. */
+function canonicalGroupRoster(route: CanonicalGroupRoute, members: GroupMember[]) {
   const profiles = new Set<string>()
   const handles = new Set(['all', 'everyone'])
 
-  const roster = members.map(member => {
+  return members.map(member => {
     const connectionId = member.route?.connectionId ?? member.connectionId
 
     if (
@@ -150,6 +145,20 @@ export async function createCanonicalGroup(
       ...(member.display_name ? { display_name: member.display_name } : {})
     }
   })
+}
+
+export async function createCanonicalGroup(
+  route: CanonicalGroupRoute,
+  name: string,
+  members: GroupMember[]
+): Promise<{ binding: CanonicalGroupBinding; room: CanonicalRoom }> {
+  requireRoute(route)
+
+  if (!name.trim() || members.length < 2 || members.length > GROUP_CHAT_MAX_MEMBERS) {
+    throw new Error(`A canonical group needs a name and between 2 and ${GROUP_CHAT_MAX_MEMBERS} members`)
+  }
+
+  const roster = canonicalGroupRoster(route, members)
 
   const { room } = await canonicalGroupRequest<{ room: CanonicalRoom }>(route, 'groups.create', {
     room_id: crypto.randomUUID(),
@@ -158,6 +167,30 @@ export async function createCanonicalGroup(
   })
 
   return { binding: { ...route, roomId: room.room_id }, room }
+}
+
+/** Replace one live canonical room's seat list. The fork's picker canon counts
+ *  seats on GROUP_CHAT_MAX_MEMBERS; the gateway's own roster rule stays the
+ *  server-side enforcement and every removed seat keeps its committed history. */
+export async function updateCanonicalGroupMembers(
+  binding: CanonicalGroupBinding,
+  members: GroupMember[]
+): Promise<CanonicalRoom> {
+  requireRoute(binding)
+
+  if (members.length < 2 || members.length > GROUP_CHAT_MAX_MEMBERS) {
+    throw new Error(`A canonical group needs between 2 and ${GROUP_CHAT_MAX_MEMBERS} members`)
+  }
+
+  const roster = canonicalGroupRoster(binding, members)
+
+  const { room } = await canonicalGroupRequest<{ room: CanonicalRoom }>(binding, 'groups.update_members', {
+    room_id: binding.roomId,
+    event_id: crypto.randomUUID(),
+    members: roster
+  })
+
+  return room
 }
 
 export async function actCanonicalGroup(
@@ -170,6 +203,7 @@ export async function actCanonicalGroup(
     discard: 'groups.discard',
     approval: 'groups.approve'
   }
+
   const method = Object.hasOwn(methods, action.kind) ? methods[action.kind] : undefined
 
   if (

@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { atom } from 'nanostores'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const request = vi.hoisted(() => vi.fn())
@@ -10,6 +10,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const gateway = createGroupGateway()
   const { en } = await import('@/i18n/en')
   const { CANONICAL_GROUP_LOCALES } = await import('./canonical-group-locales')
+  const Panel = ({ children }: { children?: ReactNode }) => <div>{children}</div>
 
   return {
     ...(await pluginSdkMock(gateway.host)),
@@ -19,6 +20,16 @@ vi.mock('@hermes/plugin-sdk', async () => {
     usePluginI18n: () => (key: string) =>
       CANONICAL_GROUP_LOCALES.en[key.replace('canonical.', '') as keyof typeof CANONICAL_GROUP_LOCALES.en] ?? key,
     Button: (p: ComponentProps<'button'>) => <button {...p} />,
+    Codicon: ({ name }: { name?: string }) => <span data-icon={name ?? ''} />,
+    Tip: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    RowButton: (p: ComponentProps<'button'>) => <button {...p} />,
+    cn: (...values: unknown[]) => values.filter(Boolean).join(' '),
+    Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+    DialogContent: Panel,
+    DialogDescription: Panel,
+    DialogFooter: Panel,
+    DialogHeader: Panel,
+    DialogTitle: Panel,
     host: { ...gateway.host, requestProfile: request }
   }
 })
@@ -56,9 +67,11 @@ it('holds Send until the selected attachment is committed, then sends it with th
 
     return {}
   })
+
   const view = render(
     <CanonicalGroupWorkspace binding={{ connectionId: 'remote', profile: 'team', roomId: 'upload-race' }} />
   )
+
   await screen.findByText('Room')
   await waitFor(() => expect((screen.getByRole('textbox') as HTMLTextAreaElement).disabled).toBe(false))
   fireEvent.change(view.container.querySelector('input[type=file]')!, {

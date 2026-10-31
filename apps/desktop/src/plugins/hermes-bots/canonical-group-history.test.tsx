@@ -14,6 +14,8 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const { atom } = await import('nanostores')
   const useStore = await import('@nanostores/react')
 
+  const Panel = ({ children }: { children?: ReactNode }) => <div>{children}</div>
+
   return {
     Textarea,
     atom,
@@ -25,7 +27,15 @@ vi.mock('@hermes/plugin-sdk', async () => {
     MessageTextContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
     Streamdown: ({ children }: { children: ReactNode }) => <div data-testid="markdown">{children}</div>,
     Codicon: () => <span />,
-    Tip: ({ children }: { children: ReactNode }) => <>{children}</>
+    Tip: ({ children }: { children: ReactNode }) => <>{children}</>,
+    RowButton: (props: ComponentProps<'button'>) => <button {...props} />,
+    cn: (...values: unknown[]) => values.filter(Boolean).join(' '),
+    Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+    DialogContent: Panel,
+    DialogDescription: Panel,
+    DialogFooter: Panel,
+    DialogHeader: Panel,
+    DialogTitle: Panel
   }
 })
 vi.mock('./canonical-group-labels', async () => {

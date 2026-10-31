@@ -6,14 +6,21 @@ const host = vi.hoisted(() => ({
   state: { connectionId: { get: vi.fn() }, profile: { get: vi.fn() } }
 }))
 
-vi.mock('@hermes/plugin-sdk', () => ({ host }))
+vi.mock('@hermes/plugin-sdk', async () => {
+  // The member-update canon rides GROUP_CHAT_MAX_MEMBERS out of ./group-chat, so
+  // the pulled legacy module graph needs the SDK's atom surface too.
+  const { pluginSdkMock } = await import('./group-test-utils')
+
+  return pluginSdkMock(host as unknown as Record<string, unknown>)
+})
 
 import {
   actCanonicalGroup,
   canonicalGroupRequest,
   captureCanonicalGroupRoute,
   createCanonicalGroup,
-  discoverCanonicalGroups
+  discoverCanonicalGroups,
+  updateCanonicalGroupMembers
 } from './canonical-groups'
 
 beforeEach(() => {
@@ -130,5 +137,61 @@ it('creates only same-authority rosters and dispatches exact advertised attempt 
   }
 
   expect(host.requestProfile).toHaveBeenCalledTimes(count)
+  expect(host.request).not.toHaveBeenCalled()
+})
+it('updates members on its exact binding with a fresh replay id and refuses seat lists outside the fork canon', async () => {
+  const binding = { connectionId: 'source-a', profile: 'team', roomId: 'room-1' }
+
+  const members = [
+    { name: 'alice', handle: 'alice', connectionId: 'source-a', display_name: 'Alice' },
+    { name: 'desktop-bob', handle: 'bob', connectionId: 'source-a', targetProfile: 'bob' }
+  ]
+
+  host.requestProfile.mockResolvedValueOnce({
+    room: { room_id: binding.roomId, name: 'Team', members: [] }
+  })
+
+  const room = await updateCanonicalGroupMembers(binding, members)
+  expect(room.room_id).toBe(binding.roomId)
+  const [route, method, params] = host.requestProfile.mock.calls[0]
+  expect(method).toBe('groups.update_members')
+  expect(route).toMatchObject({ connectionId: 'source-a', profile: 'team', targetProfile: 'team' })
+  expect(params.room_id).toBe(binding.roomId)
+  expect(params.event_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+  expect(params.profile).toBe('team')
+  expect(params.members).toEqual([
+    {
+      member_id: 'alice',
+      profile: 'alice',
+      handle: 'alice',
+      display_name: 'Alice',
+      target: { kind: 'local', profile: 'alice' }
+    },
+    { member_id: 'bob', profile: 'bob', handle: 'bob', target: { kind: 'local', profile: 'bob' } }
+  ])
+
+  // A repeated save mints a NEW event id (two distinct room control events, never one reused).
+  host.requestProfile.mockResolvedValueOnce({ room: { room_id: binding.roomId, members: [] } })
+  await updateCanonicalGroupMembers(binding, members)
+  const [, , retryParams] = host.requestProfile.mock.calls[1]
+  expect(retryParams.event_id).not.toBe(params.event_id)
+
+  for (const invalid of [
+    // Same-authority rule and reserved/shared handles, as the create mapping owns.
+    [{ ...members[0], connectionId: 'source-b' }, members[1]],
+    [
+      { ...members[0] },
+      { ...members[1], handle: 'alice' }
+    ],
+    [{ ...members[0] }, { ...members[1], handle: 'everyone' }],
+    // Seat counts: below 2 and beyond the fork's 16-seat canon.
+    [members[0]],
+    [],
+    Array.from({ length: 17 }, (_, index) => ({ name: `p${index}`, connectionId: 'source-a' }))
+  ] as never[]) {
+    await expect(updateCanonicalGroupMembers(binding, invalid)).rejects.toThrow()
+  }
+
+  expect(host.requestProfile).toHaveBeenCalledTimes(2)
   expect(host.request).not.toHaveBeenCalled()
 })

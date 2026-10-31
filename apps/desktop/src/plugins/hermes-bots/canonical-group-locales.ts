@@ -41,6 +41,10 @@ export interface CanonicalGroupMessages {
   /** Room-kind indicator: gateway-owned vs legacy Desktop room. */
   roomKindGateway: string
   roomKindLegacy: string
+  /** Member management (gateway-native seat list, `groups.update_members`). */
+  manageMembers: string
+  pickMembersHint: string
+  saveMembers: string
 }
 
 export const CANONICAL_GROUP_LOCALES = {
@@ -85,7 +89,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveSource:
       'Read-only projection: the archived past stays untouched in its stores (local copies and gateway mirror).',
     roomKindGateway: 'Gateway room',
-    roomKindLegacy: 'Legacy Desktop room'
+    roomKindLegacy: 'Legacy Desktop room',
+    manageMembers: 'Manage members',
+    pickMembersHint: 'Pick 2–{n} members for this group. The group and its history stay as they are.',
+    saveMembers: 'Save members'
   },
   ja: {
     roomStopped: 'グループが停止しました',
@@ -128,7 +135,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveSource:
       '読み取り専用の投影です。アーカイブされた過去は、保存先（ローカルコピーとゲートウェイのミラー）でそのまま残ります。',
     roomKindGateway: 'ゲートウェイルーム',
-    roomKindLegacy: 'レガシーデスクトップルーム'
+    roomKindLegacy: 'レガシーデスクトップルーム',
+    manageMembers: 'メンバーを管理',
+    pickMembersHint: 'このグループのメンバーを 2–{n} 人選びます。グループと履歴はそのまま残ります。',
+    saveMembers: 'メンバーを保存'
   },
   zh: {
     roomStopped: '群组已停止',
@@ -170,7 +180,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveEmpty: '此群组的存档历史不在此桌面的本地副本中。',
     archiveSource: '只读投影：存档的过去原样保存在其存储中（本地副本和网关镜像）。',
     roomKindGateway: '网关房间',
-    roomKindLegacy: '旧版桌面房间'
+    roomKindLegacy: '旧版桌面房间',
+    manageMembers: '管理成员',
+    pickMembersHint: '为该群组选择 2–{n} 位成员。群组及其历史保持不变。',
+    saveMembers: '保存成员'
   },
   'zh-hant': {
     roomStopped: '群組已停止',
@@ -212,7 +225,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveEmpty: '此群組的封存歷史不在此桌面的本機副本中。',
     archiveSource: '唯讀投影：封存的過去原樣保存在其儲存中（本機副本和閘道鏡像）。',
     roomKindGateway: '閘道房間',
-    roomKindLegacy: '舊版桌面房間'
+    roomKindLegacy: '舊版桌面房間',
+    manageMembers: '管理成員',
+    pickMembersHint: '為此群組選擇 2–{n} 位成員。群組與其歷史保持不變。',
+    saveMembers: '儲存成員'
   },
   ar: {
     roomStopped: 'أُوقفت المجموعة',
@@ -254,7 +270,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveEmpty: 'سجل هذه الغرفة المؤرشف غير موجود في النسخ المحلية لهذا الجهاز.',
     archiveSource: 'إسقاط للقراءة فقط: يبقى السجل المؤرشف كما هو في مخازنه (النسخ المحلية ومرآة البوابة).',
     roomKindGateway: 'غرفة البوابة',
-    roomKindLegacy: 'غرفة سطح مكتب قديمة'
+    roomKindLegacy: 'غرفة سطح مكتب قديمة',
+    manageMembers: 'إدارة الأعضاء',
+    pickMembersHint: 'اختر من 2 إلى {n} عضواً لهذه المجموعة. تبقى المجموعة وسجلها كما هما.',
+    saveMembers: 'حفظ الأعضاء'
   },
   ru: {
     roomStopped: 'Группа остановлена',
@@ -300,7 +319,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveSource:
       'Проекция только для чтения: архивное прошлое остаётся нетронутым в своих хранилищах (локальные копии и зеркало шлюза).',
     roomKindGateway: 'Комната шлюза',
-    roomKindLegacy: 'Устаревшая комната рабочего стола'
+    roomKindLegacy: 'Устаревшая комната рабочего стола',
+    manageMembers: 'Управлять участниками',
+    pickMembersHint: 'Выберите от 2 до {n} участников этой группы. Группа и её история остаются без изменений.',
+    saveMembers: 'Сохранить участников'
   },
   fr: {
     roomStopped: 'Groupe arrêté',
@@ -344,7 +366,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveSource:
       'Projection en lecture seule : le passé archivé reste intact dans ses magasins (copies locales et miroir de la passerelle).',
     roomKindGateway: 'Salon passerelle',
-    roomKindLegacy: 'Salon de bureau legacy'
+    roomKindLegacy: 'Salon de bureau legacy',
+    manageMembers: 'Gérer les membres',
+    pickMembersHint: 'Choisissez de 2 à {n} membres pour ce groupe. Le groupe et son historique restent inchangés.',
+    saveMembers: 'Enregistrer les membres'
   },
   de: {
     roomStopped: 'Gruppe angehalten',
@@ -390,7 +415,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveSource:
       'Schreibgeschützte Projektion: Der archivierte Verlauf bleibt unverändert in seinen Speichern (lokale Kopien und Gateway-Mirror).',
     roomKindGateway: 'Gateway-Raum',
-    roomKindLegacy: 'Legacy-Desktop-Raum'
+    roomKindLegacy: 'Legacy-Desktop-Raum',
+    manageMembers: 'Mitglieder verwalten',
+    pickMembersHint: 'Wählen Sie 2–{n} Mitglieder für diese Gruppe. Gruppe und Verlauf bleiben unverändert.',
+    saveMembers: 'Mitglieder speichern'
   },
   es: {
     roomStopped: 'Grupo detenido',
@@ -433,7 +461,10 @@ export const CANONICAL_GROUP_LOCALES = {
     archiveSource:
       'Proyección de solo lectura: el pasado archivado permanece intacto en sus almacenes (copias locales y espejo de la pasarela).',
     roomKindGateway: 'Sala de pasarela',
-    roomKindLegacy: 'Sala de escritorio heredada'
+    roomKindLegacy: 'Sala de escritorio heredada',
+    manageMembers: 'Gestionar miembros',
+    pickMembersHint: 'Elige entre 2 y {n} miembros para este grupo. El grupo y su historial permanecen igual.',
+    saveMembers: 'Guardar miembros'
   }
 } satisfies Record<string, CanonicalGroupMessages>
 
@@ -486,5 +517,8 @@ export const CANONICAL_GROUP_LOCALE_ITALIAN = {
   archiveSource:
     'Proiezione in sola lettura: la storia archiviata resta intatta nei suoi archivi (copie locali e mirror del gateway).',
   roomKindGateway: 'Room del gateway',
-  roomKindLegacy: 'Room desktop legacy'
+  roomKindLegacy: 'Room desktop legacy',
+  manageMembers: 'Gestisci membri',
+  pickMembersHint: 'Scegli da 2 a {n} membri per questo gruppo. Il gruppo e la sua storia restano com\'erano.',
+  saveMembers: 'Salva membri'
 } satisfies CanonicalGroupMessages

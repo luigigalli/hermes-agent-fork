@@ -1,10 +1,11 @@
-import { Button, Codicon, Textarea, useValue } from '@hermes/plugin-sdk'
+import { Button, Codicon, Textarea, Tip, useValue } from '@hermes/plugin-sdk'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { CanonicalGroupAttachments } from './canonical-group-attachments'
 import { type CanonicalGroupEvent, CanonicalGroupHistory } from './canonical-group-history'
 import { useCanonicalGroupLabels } from './canonical-group-labels'
 import { CanonicalGroupLegacyHistory } from './canonical-group-legacy-history'
+import { CanonicalGroupMembers } from './canonical-group-members'
 import { prepareCanonicalGroupSend, readCanonicalGroupSend, retireCanonicalGroupSend } from './canonical-group-send'
 import type { PreparedCanonicalGroupSend } from './canonical-group-send'
 import { canonicalThreadUnread, groupMessageSections } from './canonical-group-threads'
@@ -90,6 +91,7 @@ function CanonicalRoomView({
   const [restored, setRestored] = useState(false)
   const [pending, setPending] = useState<PreparedCanonicalGroupSend | null>(null)
   const [busy, setBusy] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
   const busyRef = useRef(false)
   const alive = useRef(true)
   const [discard, setDiscard] = useState<CanonicalPendingAction | null>(null)
@@ -500,6 +502,15 @@ function CanonicalRoomView({
           </div>
           <CanonicalGroupRoster label={labels.members} members={state?.room.members} />
         </div>
+        <Tip label={labels.manageMembers}>
+          <Button
+            aria-label={labels.manageMembers}
+            disabled={busy || !state}
+            onClick={() => setMembersOpen(true)}
+          >
+            <Codicon name="organization" />
+          </Button>
+        </Tip>
         <Button
           disabled={busy || !state?.driver_status}
           onClick={() =>
@@ -511,6 +522,15 @@ function CanonicalRoomView({
           {labels.stop}
         </Button>
       </header>
+      {state && (
+        <CanonicalGroupMembers
+          binding={binding}
+          members={state.room.members}
+          onClose={() => setMembersOpen(false)}
+          onSaved={() => void refresh().catch(e => setReadError(String(e)))}
+          open={membersOpen}
+        />
+      )}
       {readError && (
         <div role="alert">
           {readError}

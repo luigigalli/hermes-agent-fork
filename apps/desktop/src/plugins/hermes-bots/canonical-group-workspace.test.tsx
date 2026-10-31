@@ -1,7 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { atom } from 'nanostores'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const request = vi.hoisted(() => vi.fn())
@@ -10,6 +10,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const gateway = createGroupGateway()
   const { en } = await import('@/i18n/en')
   const { CANONICAL_GROUP_LOCALES } = await import('./canonical-group-locales')
+  const Panel = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
 
   return {
     ...(await pluginSdkMock(gateway.host)),
@@ -18,6 +19,15 @@ vi.mock('@hermes/plugin-sdk', async () => {
     useI18n: () => ({ t: en }),
     usePluginI18n: () => (key: string) =>
       CANONICAL_GROUP_LOCALES.en[key.replace('canonical.', '') as keyof typeof CANONICAL_GROUP_LOCALES.en] ?? key,
+    RowButton: (p: ComponentProps<'button'>) => <button {...p} />,
+    Tip: ({ children }: { children?: ReactNode }) => children,
+    Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+    DialogContent: Panel,
+    DialogDescription: Panel,
+    DialogFooter: Panel,
+    DialogHeader: Panel,
+    DialogTitle: Panel,
+    cn: (...values: unknown[]) => values.filter(Boolean).join(' '),
     Button: (p: ComponentProps<'button'>) => <button {...p} />,
     Codicon: ({ name }: { name?: string }) => <span data-icon={name ?? ''} />,
     host: { ...gateway.host, requestProfile: request }
@@ -61,10 +71,12 @@ it('preserves the unsent draft when only the room display name changes', async (
 
 it('restores a frozen send after remount and retires only its acknowledged exact retry', async () => {
   const binding = { connectionId: 'remote', profile: 'team', roomId: 'restore' }
+
   const entry = await prepareCanonicalGroupSend(binding, {
     text: 'Original',
     attachments: [{ path: '/owner/image.png', mime_type: 'image/png' }]
   })
+
   request.mockImplementation(async (_route, method) => {
     if (method === 'groups.state') {
       return { room: { name: 'Room' }, driver_status: {} }
@@ -215,10 +227,12 @@ it('reads back retry on the same authority and sends only through the group driv
 
     return {}
   })
+
   const group = registerCanonicalGroup(
     { connectionId: 'local', profile: 'default' },
     { room_id: 'r', name: 'Room', members: [] }
   )
+
   render(<GroupChatWorkspace group={group} members={[]} origin="key" />)
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }))
   await waitFor(() => expect(request.mock.calls.filter(c => c[1] === 'groups.state').length).toBeGreaterThan(1))

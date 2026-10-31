@@ -14,6 +14,8 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const { atom } = await import('nanostores')
   const useStore = await import('@nanostores/react')
 
+  const Panel = ({ children }: { children?: ReactNode }) => <div>{children}</div>
+
   return {
     Textarea,
     atom,
@@ -25,7 +27,15 @@ vi.mock('@hermes/plugin-sdk', async () => {
     usePluginI18n: () => translateBots,
     Button: (props: ComponentProps<'button'>) => <button {...props} />,
     Codicon: () => <span />,
-    Tip: ({ children }: { children: ReactNode }) => <>{children}</>
+    Tip: ({ children }: { children: ReactNode }) => <>{children}</>,
+    RowButton: (props: ComponentProps<'button'>) => <button {...props} />,
+    cn: (...values: unknown[]) => values.filter(Boolean).join(' '),
+    Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+    DialogContent: Panel,
+    DialogDescription: Panel,
+    DialogFooter: Panel,
+    DialogHeader: Panel,
+    DialogTitle: Panel
   }
 })
 vi.mock('./canonical-group-labels', async () => {
@@ -47,6 +57,7 @@ vi.mock('./canonical-group-labels', async () => {
 import { CanonicalGroupWorkspace } from './canonical-group-workspace'
 
 const binding = { connectionId: 'owner-a', profile: 'reviewer', roomId: 'room-one' }
+
 const attachment = {
   attachment_id: 'att_00000000000000000000000000000001',
   kind: 'file',
@@ -54,6 +65,7 @@ const attachment = {
   mime: 'text/plain',
   size: 1
 }
+
 const originalDesktop = window.hermesDesktop
 afterEach(() => {
   cleanup()
@@ -69,9 +81,11 @@ function setup() {
   const cache = vi.fn().mockResolvedValue('/private/composer-images/not-a-user-download')
   window.hermesDesktop = { saveImageBuffer: cache } as unknown as typeof window.hermesDesktop
   let release!: (value: unknown) => void
+
   const held = new Promise(resolve => {
     release = resolve
   })
+
   request.mockImplementation(async (_route, method) => {
     if (method === 'groups.state') {
       return { room: { name: 'Room' } }
@@ -94,6 +108,7 @@ function setup() {
     if (method === 'groups.attachment.download') {
       return held
     }
+
     throw new Error(`Unexpected method ${method}`)
   })
 

@@ -4,6 +4,9 @@ import { afterEach, expect, it, vi } from 'vitest'
 
 vi.mock('@hermes/plugin-sdk', async () => {
   const { Streamdown } = await import('streamdown')
+  // shared.ts's module-scope atoms ride the legacy group-chat graph in through
+  // `canonical-groups`, so the mock needs the real nanostores atom surface.
+  const { atom } = await import('nanostores')
   const { en } = await import('@/i18n/en')
   const { relativeTime } = await import('@/lib/time')
 
@@ -15,6 +18,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
   )
 
   return {
+    atom,
     MessageTextContent,
     Streamdown,
     relativeTime,
@@ -194,6 +198,7 @@ it.each([null, false, '', '1792152000', Number.NaN, Number.POSITIVE_INFINITY, 1e
       created_at: createdAt,
       payload: { text: 'Still readable' }
     } as unknown as CanonicalGroupEvent
+
     const { container } = render(<CanonicalGroupHistory binding={binding} events={[event]} />)
 
     expect(screen.getByText('Still readable')).toBeTruthy()

@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 // Fork thread UX re-landed on the canonical workspace (deposit-spec 19/10):
@@ -15,6 +15,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const { en } = await import('@/i18n/en')
   const { CANONICAL_GROUP_LOCALES } = await import('./canonical-group-locales')
   const base = await pluginSdkMock((createGroupGateway().host as Record<string, unknown>) || {})
+  const Panel = ({ children }: { children?: ReactNode }) => <div>{children}</div>
 
   return {
     ...base,
@@ -24,6 +25,15 @@ vi.mock('@hermes/plugin-sdk', async () => {
       CANONICAL_GROUP_LOCALES.en[key.replace('canonical.', '') as keyof typeof CANONICAL_GROUP_LOCALES.en] ?? key,
     Button: (props: ComponentProps<'button'>) => <button {...props} />,
     Codicon: ({ name }: { name: string }) => <span data-icon={name} />,
+    Tip: ({ children }: { children: ReactNode }) => <>{children}</>,
+    RowButton: (props: ComponentProps<'button'>) => <button {...props} />,
+    cn: (...values: unknown[]) => values.filter(Boolean).join(' '),
+    Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
+    DialogContent: Panel,
+    DialogDescription: Panel,
+    DialogFooter: Panel,
+    DialogHeader: Panel,
+    DialogTitle: Panel,
     relativeTime: () => 'now',
     host: { ...base.host, requestProfile: request }
   }
