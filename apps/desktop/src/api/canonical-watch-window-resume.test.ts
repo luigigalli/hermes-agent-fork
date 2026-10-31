@@ -13,8 +13,10 @@ import { CanonicalDesktopProtocol } from './canonical-protocol'
 const doc = JSON.parse(
   readFileSync(join(process.cwd(), '..', 'shared', 'src', 'gateway-contract.openrpc.json'), 'utf8')
 )
+
 const resumeRef = doc['x-canonical-methods'].find((m: { name: string }) => m.name === 'session.resume').params[0].schema
   .$ref
+
 const RESUME_KEYS = new Set(Object.keys(doc.components.schemas[resumeRef.split('/').at(-1)].properties))
 
 test.each([
@@ -26,6 +28,7 @@ test.each([
     'session.resume',
     primaryResumeParams('s', watchWindow, snapshot, 'work')
   )
+
   expect(Object.keys(frame).filter(key => !RESUME_KEYS.has(key))).toEqual([])
   expect(frame).toMatchObject({ session_id: 's', profile: 'work' })
 

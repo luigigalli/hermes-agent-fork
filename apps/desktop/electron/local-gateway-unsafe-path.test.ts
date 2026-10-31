@@ -6,6 +6,7 @@ test('an unsafe control path surfaces without forgetting and re-ensuring the sam
   const failure = new Error('Unsafe gateway control path')
   const ensure = vi.fn(async () => 'owner')
   const forget = vi.fn()
+
   const use = vi.fn(async () => {
     throw failure
   })
@@ -39,6 +40,7 @@ test.skipIf(process.platform === 'win32')(
     const { isStaleLocalGatewayError, mintLocalGatewayTicket } = await import('./local-gateway')
     const { shortSocketTmpDir } = await import('./local-gateway.test-helpers')
     const home = await shortSocketTmpDir('desktop-unsafe-msg-')
+
     const endpoint = (profile_id: string) => ({
       profile_id,
       instance_id: 'owner',

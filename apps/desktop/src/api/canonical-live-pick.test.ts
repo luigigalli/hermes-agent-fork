@@ -59,6 +59,7 @@ test('a fence refusal naming fresh fences is retried once at them, never looped'
       data: { reason: 'stale_generation', revision: 6, execution_generation: 3 }
     })
   }
+
   let attempts = 0
 
   const { calls, client } = await attached(params => {
@@ -125,6 +126,7 @@ test("a guarded next-turn pick's confirmed resend carries the owner's token from
     model: (params.payload as { model: string }).model,
     revision: 5
   }))
+
   const protocol = (client as unknown as { protocol: { event: (event: Record<string, unknown>) => void } }).protocol
 
   protocol.event({

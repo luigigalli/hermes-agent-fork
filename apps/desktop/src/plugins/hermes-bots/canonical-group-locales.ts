@@ -519,6 +519,6 @@ export const CANONICAL_GROUP_LOCALE_ITALIAN = {
   roomKindGateway: 'Room del gateway',
   roomKindLegacy: 'Room desktop legacy',
   manageMembers: 'Gestisci membri',
-  pickMembersHint: 'Scegli da 2 a {n} membri per questo gruppo. Il gruppo e la sua storia restano com\'erano.',
+  pickMembersHint: "Scegli da 2 a {n} membri per questo gruppo. Il gruppo e la sua storia restano com'erano.",
   saveMembers: 'Salva membri'
 } satisfies CanonicalGroupMessages

@@ -16,6 +16,7 @@ interface ServerFrame {
 }
 
 const owner1 = (frames as { epoch1: { frames: ServerFrame[] } }).epoch1.frames
+
 const owner2 = (
   frames as {
     epoch2: { frames: ServerFrame[]; idle_mutation_frames: ServerFrame[]; paused_cancel_frames: ServerFrame[] }
@@ -102,6 +103,7 @@ describe('execution authority fence over real owner frames', () => {
     for (const frame of [...owner1Live, ...owner2.frames.slice(owner2Start)]) {
       deliver(socket, frame)
     }
+
     deliver(socket, retiredCompletion)
 
     for (const event of received) {
@@ -114,6 +116,7 @@ describe('execution authority fence over real owner frames', () => {
       terminal: boolean
       retiredEpochs: Set<string>
     }
+
     expect(installed).toBeDefined()
     expect(installed.epoch).toBe(String(owner2.frames[owner2Start].params.authority_epoch))
     expect(installed.generation).toBe(owner2.frames[owner2Start].params.execution_generation)

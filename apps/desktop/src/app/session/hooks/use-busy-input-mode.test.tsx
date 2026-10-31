@@ -30,6 +30,7 @@ it('canonical busy policy is session scoped even with a cached global mode', asy
   $gatewayState.set('open')
   $busyInputConfig.set({ owner: JSON.stringify(['', 'default']), connection: $connection.get(), mode: 'queue' })
   let resolveNext!: (result: { value: string }) => void
+
   const request = vi
     .fn()
     .mockResolvedValueOnce({ value: 'steer' })
@@ -39,6 +40,7 @@ it('canonical busy policy is session scoped even with a cached global mode', asy
           resolveNext = resolve
         })
     )
+
   const h = renderHook(
     ({ sessionId }) => useBusyInputMode({ sessionId, storedSessionId: null, requestGateway: request }),
     { initialProps: { sessionId: 'first' } }
@@ -60,10 +62,12 @@ it('canonical busy policy is session scoped even with a cached global mode', asy
 it('recovers a transient busy policy read without reconnecting', async () => {
   vi.useFakeTimers()
   $gatewayState.set('open')
+
   const request = vi
     .fn()
     .mockRejectedValueOnce(new Error('temporarily unavailable'))
     .mockResolvedValue({ value: 'steer' })
+
   const hook = renderHook(() =>
     useBusyInputMode({ sessionId: 'runtime', storedSessionId: null, requestGateway: request })
   )
@@ -84,6 +88,7 @@ it('bounds failed reads and cancels retries when their session leaves', async ()
   vi.useFakeTimers()
   $gatewayState.set('open')
   const request = vi.fn().mockRejectedValue(new Error('unavailable'))
+
   const hook = renderHook(
     ({ sessionId }) => useBusyInputMode({ sessionId, storedSessionId: null, requestGateway: request }),
     { initialProps: { sessionId: 'first' } }

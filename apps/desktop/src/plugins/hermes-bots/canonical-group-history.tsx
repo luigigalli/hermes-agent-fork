@@ -3,11 +3,7 @@ import type { ReactNode } from 'react'
 
 import { type CanonicalGroupAttachment, CanonicalGroupAttachments } from './canonical-group-attachments'
 import { useCanonicalGroupLabels } from './canonical-group-labels'
-import {
-  groupMessageSections,
-  isCanonicalMessageEvent,
-  untetheredNotices
-} from './canonical-group-threads'
+import { groupMessageSections, isCanonicalMessageEvent, untetheredNotices } from './canonical-group-threads'
 import type { CanonicalGroupBinding, CanonicalRoomMember } from './canonical-groups'
 
 const MessageTextContent = typeof sdk === 'undefined' ? undefined : sdk.MessageTextContent

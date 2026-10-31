@@ -42,13 +42,7 @@ interface CanonicalGroupMembersProps {
 const seatKey = (member: GroupMember) =>
   (member.route?.targetProfile ?? member.targetProfile ?? member.name).toLowerCase()
 
-export function CanonicalGroupMembers({
-  binding,
-  members = [],
-  onClose,
-  onSaved,
-  open
-}: CanonicalGroupMembersProps) {
+export function CanonicalGroupMembers({ binding, members = [], onClose, onSaved, open }: CanonicalGroupMembersProps) {
   const labels = useCanonicalGroupLabels()
 
   // Candidates never come from the legacy roster: the seats this caller may
@@ -98,7 +92,11 @@ export function CanonicalGroupMembers({
       }
 
       seen.add(profile)
-      rows.push({ name: member.profile, handle: member.handle, ...(member.display_name ? { display_name: member.display_name } : {}) })
+      rows.push({
+        name: member.profile,
+        handle: member.handle,
+        ...(member.display_name ? { display_name: member.display_name } : {})
+      })
     }
 
     for (const profile of seatable) {
@@ -151,9 +149,7 @@ export function CanonicalGroupMembers({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{labels.manageMembers}</DialogTitle>
-          <DialogDescription>
-            {labels.pickMembersHint.replace('{n}', String(GROUP_CHAT_MAX_MEMBERS))}
-          </DialogDescription>
+          <DialogDescription>{labels.pickMembersHint.replace('{n}', String(GROUP_CHAT_MAX_MEMBERS))}</DialogDescription>
         </DialogHeader>
         <div className="grid max-h-80 gap-0.5 overflow-y-auto" data-testid="canonical-group-member-picker">
           {roster.map(member => {

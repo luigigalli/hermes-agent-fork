@@ -1329,6 +1329,7 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated }: Crea
     if (creating.current) {
       return
     }
+
     creating.current = true
 
     try {
@@ -1366,6 +1367,7 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated }: Crea
         if (!sourceCurrent()) {
           return
         }
+
         const key = registerCanonicalGroup(route, created.room)
         onClose()
         onCreated?.(key, 'key')

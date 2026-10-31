@@ -178,14 +178,17 @@ export function ToolsetsTab({ hints, onQueryChange, profile, query, toolsets }: 
   // The feature row is the four most-used toolsets once there is real usage to
   // rank by; before that it's the essentials. Everything else sits under what it does.
   const used = visibleToolsets.slice(0, TOOLSET_FEATURE_COUNT)
+
   const ranked =
     !!toolCalls && used.length === TOOLSET_FEATURE_COUNT && used.every(toolset => toolsetCalls(toolset, toolCalls) > 0)
+
   const featured =
     query || visibleToolsets.length <= TOOLSET_FEATURE_MIN
       ? []
       : ranked
         ? used
         : visibleToolsets.filter(toolset => TOOLSET_ESSENTIALS.includes(toolset.name))
+
   const rest = visibleToolsets.filter(toolset => !featured.includes(toolset))
 
   const sections: CatalogSurfaceSection[] = [

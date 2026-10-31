@@ -18,10 +18,13 @@ afterEach(() => {
 test('image recovery never offers expanded slash intent as an ordinary draft and leaves its exact journal intact', async () => {
   vi.stubGlobal('hermesDesktop', undefined)
   const destination = { scopeKey: 'local::default' } as SubmissionDestination
+
   const attachments: PreparedSubmission['attachments'] = [
     { id: '/cache/a.png', occurrenceId: 'image-occurrence', kind: 'image', label: 'a.png' }
   ]
+
   const ordinary = preparedSubmissionKey('stored', destination, 'caption', attachments)
+
   const slash = preparedSubmissionKey('stored', destination, 'expanded skill instructions', attachments, {
     retryText: '/skill task',
     submission_id: 'skill-id'
@@ -49,21 +52,26 @@ test('image recovery never offers expanded slash intent as an ordinary draft and
 
 test('native preparation waits for acknowledgement and never downgrades a write failure to browser storage', async () => {
   let ack!: () => void
+
   const gate = new Promise<void>(resolve => {
     ack = resolve
   })
+
   const entry = {
     id: 'a',
     text: 'Ω\n  exact',
     attachments: [],
     params: { session_id: 'live' }
   } as unknown as PreparedSubmission
+
   const native = { read: vi.fn(async () => JSON.stringify({ key: entry })), update: vi.fn(() => gate) }
   vi.stubGlobal('hermesDesktop', { preparedSubmissions: native })
   let finished = false
+
   const writing = writePreparedSubmission('key', entry).then(() => {
     finished = true
   })
+
   await Promise.resolve()
   expect(finished).toBe(false)
   expect(native.update).toHaveBeenCalledWith('key', JSON.stringify(entry))

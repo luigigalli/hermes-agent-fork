@@ -34,6 +34,7 @@ test("a canonical reconnect replays the retained window to the epoch owner's pro
 
   const calls: any[] = []
   const peers: any[] = []
+
   const push = (peer: any, event: unknown) =>
     peer.send(JSON.stringify({ jsonrpc: '2.0', method: 'event', params: event }))
 
@@ -92,6 +93,7 @@ test("a canonical reconnect replays the retained window to the epoch owner's pro
         }
       })
     )
+
     peers[0].terminate()
     await closed
 
@@ -111,6 +113,7 @@ test("a canonical reconnect replays the retained window to the epoch owner's pro
     for (const peer of server.clients) {
       peer.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })

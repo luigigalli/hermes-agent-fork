@@ -24,6 +24,7 @@ test('branching from a folded assistant bubble keeps through its last durable ro
   const answer = messages.find(
     message => message.role === 'assistant' && JSON.stringify(message.parts).includes('first answer')
   )!
+
   const branch = selectBranchMessages(messages, messages, answer.id)
 
   expect(branch.map(message => message.content)).toEqual(['first question', 'first answer'])

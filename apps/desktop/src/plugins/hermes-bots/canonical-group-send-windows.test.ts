@@ -40,6 +40,7 @@ function windows() {
         held = undefined
         await gate
       }
+
       const result = handler(event, ...args)
       await hop()
 

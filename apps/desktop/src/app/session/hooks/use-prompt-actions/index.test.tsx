@@ -138,6 +138,7 @@ describe('durable submit acknowledgement', () => {
           if (entry === null) {
             throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
           }
+
           entries.set(key, entry)
         }
       }
@@ -148,6 +149,7 @@ describe('durable submit acknowledgement', () => {
       if (method !== 'prompt.submit') {
         return {} as never
       }
+
       ids.push(params?.submission_id)
 
       return { admission_id: params?.submission_id, status: 'started' } as never
@@ -265,6 +267,7 @@ describe('durable submit acknowledgement', () => {
       if (method !== 'prompt.submit') {
         return {} as never
       }
+
       submits.push(params!)
 
       if ('submission_id' in params!) {
@@ -309,6 +312,7 @@ describe('submit timeout admission fences', () => {
       if (method !== 'prompt.submit') {
         return {} as never
       }
+
       submits.push(params!)
 
       if (submits.length === 1) {
@@ -353,6 +357,7 @@ describe('submit timeout admission fences', () => {
       if (method !== 'prompt.submit') {
         return {} as never
       }
+
       submits.push(params!)
 
       // A legacy serve refuses every submission_id before admission.
@@ -397,6 +402,7 @@ describe('submit timeout admission fences', () => {
       if (method !== 'prompt.submit') {
         return {} as never
       }
+
       submits.push(params!)
 
       if (submits.length === 1) {
@@ -434,6 +440,7 @@ describe('terminal receipt settlement', () => {
       if (method !== 'prompt.submit') {
         return {} as never
       }
+
       expect(handle!.state()).toMatchObject({
         busy: true,
         awaitingResponse: true,

@@ -11,6 +11,7 @@ test('a second viewer adopts the revision from session.updated, monotonically', 
   for (const v of [a, b]) {
     v.result('session.resume', { session_id: 's' }, { session_id: 's', revision: 7, execution_generation: 3 })
   }
+
   const receipt = { session_id: 's', revision: 8, title: 'A' }
   a.result('session.title', a.prepare('session.title', { session_id: 's', title: 'A' }), receipt)
   b.event({ type: 'session.updated', session_id: 's', payload: receipt })

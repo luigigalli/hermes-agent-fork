@@ -119,6 +119,7 @@ export default {
     // writes through.
     loadBotSections()
     const disposeLocales = ctx.i18n.register(BOTS_LOCALES)
+
     // Italian (display.language of this user): the runtime language pack that
     // makes the group surfaces' it bundle resolvable (BOTS_LOCALES.it) and
     // adds the app-level strings the group views read. Disposed on unload.
@@ -130,6 +131,7 @@ export default {
             translations: ITALIAN_GROUP_LOCALE_PACK
           })
         : undefined
+
     setGroupChatSyncDisposed(false)
     startFaceClock()
     // The cross-connection relay rides every gateway socket this Desktop
@@ -142,9 +144,11 @@ export default {
     // before this, the rAF loop + 1Hz document scan ran until app restart.
     if (typeof ctx.onDispose === 'function') {
       ctx.onDispose(disposeLocales)
+
       if (disposeItalianLocale) {
         ctx.onDispose(disposeItalianLocale)
       }
+
       ctx.onDispose(stopFaceClock)
       ctx.onDispose(stopBotRelay)
       ctx.onDispose(stopScreenAutoRaise)

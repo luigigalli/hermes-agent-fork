@@ -32,7 +32,7 @@
 import { type PluginLocaleBundles, type PluginTranslate, usePluginI18n } from '@hermes/plugin-sdk'
 import { useMemo } from 'react'
 
-import { CANONICAL_GROUP_LOCALES, CANONICAL_GROUP_LOCALE_ITALIAN } from './canonical-group-locales'
+import { CANONICAL_GROUP_LOCALE_ITALIAN, CANONICAL_GROUP_LOCALES } from './canonical-group-locales'
 import { bind, type Bound } from './i18n-bind'
 import { type BotsMessages } from './i18n-messages'
 import { getPluginCtx } from './shared'

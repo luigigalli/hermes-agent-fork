@@ -88,6 +88,7 @@ test.skipIf(process.platform === 'win32')(
         async () => backend,
         () => home
       )
+
       const ticket = await mint(endpoint, 'native-http')
       expect(ticket).toBe('bundled-grant')
     } finally {

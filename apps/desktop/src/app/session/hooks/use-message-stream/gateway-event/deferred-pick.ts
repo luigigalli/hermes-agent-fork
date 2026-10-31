@@ -45,6 +45,7 @@ export function handleDeferredPickEvent(ctx: GatewayEventContext): boolean {
   // Another profile's session can share this id (imports): its outcome is not this composer's.
   const ownSource = fromActiveSource()
   const profile = event.profile ?? deps.activeGatewayProfile
+
   const invalidate = () =>
     void deps.queryClient.invalidateQueries({ queryKey: modelOptionsQueryKey(profile, sessionId) })
 

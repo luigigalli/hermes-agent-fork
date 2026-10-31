@@ -26,6 +26,7 @@ it('the Italian gate copy carries the same keys as the English gate bundle', () 
     string,
     string
   >
+
   const italianGate = ((italian?.legacyGate || {}) as Record<string, string>) ?? {}
 
   expect(Object.keys(italianGate).sort()).toEqual(Object.keys(englishGate).sort())

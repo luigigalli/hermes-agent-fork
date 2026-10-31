@@ -66,6 +66,7 @@ function writeSpent(key: string, id: string | undefined): void {
   if (!(key in legacy)) {
     return
   }
+
   delete legacy[key]
 
   if (Object.keys(legacy).length) {
@@ -239,6 +240,7 @@ export async function preparedSubmissionSlot(intent: string): Promise<string> {
   if (!(await readJournal())[intent] && (await holdPreparedSubmission(intent))) {
     return intent
   }
+
   const key = JSON.stringify([...JSON.parse(intent), crypto.randomUUID()])
   await holdPreparedSubmission(key)
 
@@ -275,6 +277,7 @@ export async function removePreparedSubmission(key: string, id: string): Promise
   } catch (error) {
     console.warn('[prepared-submission-tombstone]', error)
   }
+
   await retireJournalEntry(key)
   clearSpent(key)
   owned.get(key)?.()

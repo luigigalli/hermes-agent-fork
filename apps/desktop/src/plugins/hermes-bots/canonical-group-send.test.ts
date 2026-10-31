@@ -78,9 +78,11 @@ test('uncertain sends reopen with exact identity and attachments, isolated by au
 test('native journal acknowledgement gates send and a failed write cannot downgrade to browser storage', async () => {
   let acknowledge!: () => void
   let entered!: () => void
+
   const writing = new Promise<void>(resolve => {
     entered = resolve
   })
+
   const gate = new Promise<void>(resolve => {
     acknowledge = resolve
   })

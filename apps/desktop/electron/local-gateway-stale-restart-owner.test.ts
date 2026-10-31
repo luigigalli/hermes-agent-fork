@@ -6,12 +6,14 @@ import { createStaleGatewayRestarter } from './local-gateway'
 // same stale code are two processes; the second must be restarted too, not attached as-is.
 test('a second owner on the same stale code is restarted, while a served sibling shares its multiplexer restart', async () => {
   const restarted: string[] = []
+
   const restart = createStaleGatewayRestarter(
     async owner => {
       restarted.push(owner)
     },
     () => undefined
   )
+
   const stale = { gateway: 'old', client: 'new' }
 
   const owner = (profile_id: string, control_home: null | string = null) => ({

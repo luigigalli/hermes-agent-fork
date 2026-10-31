@@ -43,11 +43,13 @@ function persistedImageRefs(text: string) {
   if (!suffix) {
     return extractImageRefs(text)
   }
+
   const paths = [...suffix[1].matchAll(/^\[Image attached(?: at)?: (.+)\]$/gm)].map(match => match[1])
 
   if (paths.length !== suffix[2].split('[screenshot]').length - 1) {
     return extractImageRefs(text)
   }
+
   const extracted = extractImageRefs(text.slice(0, suffix.index))
 
   return {
@@ -492,6 +494,7 @@ export function toChatMessages(messages: SessionMessage[]): ChatMessage[] {
     // (attached files, large pastes) moves there too, for the same parity.
     const imageRefExtraction =
       displayRole === 'user' && rawDisplayContent ? persistedImageRefs(rawDisplayContent) : null
+
     const fileRefExtraction = imageRefExtraction ? splitLeadingAttachmentRefs(imageRefExtraction.cleanedText) : null
     const displayContent = fileRefExtraction ? fileRefExtraction.text : rawDisplayContent
     const liftedRefs = [...(fileRefExtraction?.refs ?? []), ...(imageRefExtraction?.refs ?? [])]

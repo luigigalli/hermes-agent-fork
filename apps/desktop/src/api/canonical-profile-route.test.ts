@@ -72,6 +72,7 @@ test('a sibling profile route survives canonical request translation', async () 
     for (const socket of server.clients) {
       socket.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })

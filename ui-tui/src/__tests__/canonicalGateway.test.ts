@@ -31,11 +31,13 @@ it('retains prepared identity and rejects unsupported TUI launch policy instead 
   expect(
     sharedControlParams({ sharedControl: { session_id: 'sid', execution_generation: 9, prompt_id: 'approval-9' } })
   ).toEqual({ session_id: 'sid', execution_generation: 9, prompt_id: 'approval-9' })
+
   const receipt = canonicalResult(
     'prompt.submit',
     { admission_id: 'server-admission', ref: { profile_id: '/tmp/profile', session_id: 'sid' }, status: 'queued' },
     { input_id: 'prepared-id' }
   )
+
   expect(receipt).toMatchObject({
     admission_id: 'server-admission',
     input_id: 'prepared-id',
@@ -64,9 +66,11 @@ it('rebuilds --max-turns from the launcher environment as the integer the sessio
   const options = localCreationOptions({ HERMES_TUI_MAX_TURNS: '5', HERMES_MODEL: 'local-model' } as NodeJS.ProcessEnv)
   expect(options.max_turns).toBe(5)
   expect(localCreationOptions({} as NodeJS.ProcessEnv)).not.toHaveProperty('max_turns')
+
   // The pre-gateway "unlimited" spellings reach session.create as values the policy reads, never NaN/null.
   const wire = (value: string) =>
     JSON.parse(JSON.stringify(localCreationOptions({ HERMES_TUI_MAX_TURNS: value } as NodeJS.ProcessEnv))).max_turns
+
   expect(['0', '-1', 'none', 'unlimited'].map(wire)).toEqual([0, -1, 'none', 'unlimited'])
 })
 
@@ -86,6 +90,7 @@ it("sends the launcher's client environment (LC-8, T3) only to a gateway that ta
   const options = localCreationOptions({
     HERMES_TUI_CLIENT_ENV: JSON.stringify({ PATH: '/client/bin' })
   } as NodeJS.ProcessEnv)
+
   expect(options.client_env).toEqual({ PATH: '/client/bin' })
   const takes = { sources: ['tui'], parameters: ['request_id', 'source', 'client_env'] }
   expect(canonicalRequest('session.create', { request_id: 'r', ...options }, takes).params.client_env).toEqual({

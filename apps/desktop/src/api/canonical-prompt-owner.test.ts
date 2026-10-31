@@ -203,6 +203,7 @@ test('an unanswered prompt is replayed after its response was lost and the socke
 
 test('failed answers recover an authoritative pending card once and callbacks cannot cross socket generations', async () => {
   vi.spyOn(JsonRpcGatewayClient.prototype, 'connect').mockResolvedValue()
+
   const prompt = {
     kind: 'approval',
     prompt_id: 'pending',

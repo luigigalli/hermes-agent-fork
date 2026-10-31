@@ -548,6 +548,7 @@ it('a new identical message never adopts an unconfirmed send; the restored draft
     if (method !== 'prompt.submit') {
       throw new Error(`unexpected ${method}`)
     }
+
     const id = String((params as Record<string, unknown>).submission_id)
     const replay = admitted.has(id)
     admitted.add(id)
@@ -559,10 +560,12 @@ it('a new identical message never adopts an unconfirmed send; the restored draft
 
     return { admission_id: id, status: replay ? 'terminal' : 'started' }
   })
+
   const ids = () =>
     vi
       .mocked(requestGatewayForProfile)
       .mock.calls.map(([, , params]) => String((params as Record<string, unknown>).submission_id))
+
   stashSessionDraft('stored-B', 'continue', [])
   seed()
 

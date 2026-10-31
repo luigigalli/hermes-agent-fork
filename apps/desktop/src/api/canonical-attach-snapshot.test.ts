@@ -56,6 +56,7 @@ test('a cold attach delivers the snapshot prompt and marks the session attached'
     for (const socket of server.clients) {
       socket.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })

@@ -48,7 +48,23 @@ const notified = async () => {
   return (host as unknown as { notify: ReturnType<typeof vi.fn> }).notify.mock.calls
 }
 
-const seatable = ['p03', 'p04', 'p05', 'p06', 'p07', 'p08', 'p09', 'p10', 'p11', 'p12', 'p13', 'p14', 'p15', 'p16', 'p17']
+const seatable = [
+  'p03',
+  'p04',
+  'p05',
+  'p06',
+  'p07',
+  'p08',
+  'p09',
+  'p10',
+  'p11',
+  'p12',
+  'p13',
+  'p14',
+  'p15',
+  'p16',
+  'p17'
+]
 
 beforeEach(() => {
   request.mockReset()
@@ -88,7 +104,11 @@ it('lists stored seats pre-checked plus seatable candidates and saves the mapped
   await waitFor(() => expect(request.mock.calls.some(call => call[1] === 'groups.update_members')).toBe(true))
   const [route, method, params] = request.mock.calls.find(call => call[1] === 'groups.update_members')!
   expect(method).toBe('groups.update_members')
-  expect(route).toMatchObject({ connectionId: binding.connectionId, profile: binding.profile, targetProfile: binding.profile })
+  expect(route).toMatchObject({
+    connectionId: binding.connectionId,
+    profile: binding.profile,
+    targetProfile: binding.profile
+  })
   expect(params.room_id).toBe(binding.roomId)
   expect(params.profile).toBe(binding.profile)
   expect(params.members).toEqual([

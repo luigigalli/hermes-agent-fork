@@ -179,10 +179,7 @@ it('updates members on its exact binding with a fresh replay id and refuses seat
   for (const invalid of [
     // Same-authority rule and reserved/shared handles, as the create mapping owns.
     [{ ...members[0], connectionId: 'source-b' }, members[1]],
-    [
-      { ...members[0] },
-      { ...members[1], handle: 'alice' }
-    ],
+    [{ ...members[0] }, { ...members[1], handle: 'alice' }],
     [{ ...members[0] }, { ...members[1], handle: 'everyone' }],
     // Seat counts: below 2 and beyond the fork's 16-seat canon.
     [members[0]],

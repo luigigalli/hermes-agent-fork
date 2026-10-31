@@ -144,6 +144,7 @@ it('journals canonical attachment payload before sending and replays it unchange
   patchUiState({ sid: 'owner' })
   const destination = captureDestination()
   const attachments = [{ path: join(home, 'cache/images/shot.png'), mime: 'image/png' }]
+
   const item = {
     text: 'caption',
     display: 'caption [[ Image 1 ]]',
@@ -152,6 +153,7 @@ it('journals canonical attachment payload before sending and replays it unchange
     destination,
     inFlight: true
   }
+
   const wires: any[] = []
 
   const request = vi.fn(async (method, params) => {

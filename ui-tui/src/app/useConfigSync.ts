@@ -411,6 +411,7 @@ export function useConfigSync({
       if (!scope.isCurrent()) {
         return
       }
+
       mtimeRef.current = Number(r?.mtime ?? 0)
       // Seed the MCP revision baseline too: after a normal boot mtime is
       // already non-zero, so the poller's baseline branch never runs, and an
@@ -438,6 +439,7 @@ export function useConfigSync({
         if (!scope.isCurrent()) {
           return
         }
+
         const next = Number(r?.mtime ?? 0)
         const nextMcpRev = String(r?.mcp_rev ?? '')
 

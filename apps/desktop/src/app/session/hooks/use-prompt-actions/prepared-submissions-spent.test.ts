@@ -18,6 +18,7 @@ function nativeJournal() {
       if (state.failing) {
         throw new Error('ENOSPC: no space left on device')
       }
+
       const journal = JSON.parse(file)
 
       if (entry === null) {
@@ -25,6 +26,7 @@ function nativeJournal() {
       } else {
         journal[key] = JSON.parse(entry)
       }
+
       file = JSON.stringify(journal)
     }
   }
@@ -36,6 +38,7 @@ test('an admitted identity whose journal removal failed stays spent across a rel
   const journal = nativeJournal()
   vi.stubGlobal('hermesDesktop', { preparedSubmissions: journal.native })
   const intent = JSON.stringify(['local::default', 'stored', 'same text', [], null, false, null])
+
   const entry = {
     id: 'admitted-id',
     text: 'same text',
@@ -100,8 +103,10 @@ function storageView(shared: Map<string, string>) {
 
 test('two windows retiring different admitted entries keep both tombstones across a reload', async () => {
   const realStorage = window.localStorage
+
   const inWindow = (storage: Storage) =>
     Object.defineProperty(window, 'localStorage', { configurable: true, value: storage })
+
   const journal = nativeJournal()
   vi.stubGlobal('hermesDesktop', { preparedSubmissions: journal.native })
   const owner = { connectionId: 'local', profile: 'default' }

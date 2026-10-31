@@ -68,6 +68,7 @@ export function CatalogDiscovery({
 
   // A slide leaves its shelf, as the single hero always did.
   const others = entries.filter(entry => !featured.includes(entry))
+
   const tiered =
     kind === 'plugins' && !byCategory
       ? PLUGIN_TIERS.map(tier => ({
@@ -76,6 +77,7 @@ export function CatalogDiscovery({
           items: others.filter(entry => pluginTier(entry) === tier)
         })).filter(({ items }) => items.length)
       : []
+
   const remaining =
     kind === 'plugins' && !byCategory ? others.filter(entry => pluginTier(entry) === 'community') : others
 

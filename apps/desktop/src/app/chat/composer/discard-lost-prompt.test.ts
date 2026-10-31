@@ -87,6 +87,7 @@ async function fixture() {
       for (const socket of server.clients) {
         socket.terminate()
       }
+
       await new Promise<void>(resolve => server.close(() => resolve()))
     }
   }
@@ -127,6 +128,7 @@ test('Discard refuses unresolved or unavailable owners instead of falling back t
     window.hermesDesktop!.getConnectionFor = async () => {
       throw new Error('owner unavailable')
     }
+
     await expect(discardLostPrompt('stored', 'stored', 'lost', f.ambientRequest)).rejects.toThrow('owner unavailable')
     expect(f.ambientRequest).not.toHaveBeenCalled()
     expect(f.frames.filter(frame => frame.method === 'prompt.resolve_unknown')).toEqual([])

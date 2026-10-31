@@ -88,12 +88,14 @@ test('a prompt declined locally is shown again while the authority still lists i
     command: 'build',
     choices: ['once']
   }
+
   const { calls, client } = await equalIdClient(async () => ({
     session_id: 's',
     revision: 1,
     execution_generation: 2,
     prompts: [prompt]
   }))
+
   const shown: any[] = []
 
   client.onRequest(request => {

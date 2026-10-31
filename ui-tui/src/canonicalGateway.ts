@@ -31,6 +31,7 @@ export function canonicalRequest(method: string, original: Record<string, unknow
     if (!contract.parameters.includes('client_env')) {
       delete params.client_env
     }
+
     const unsupported = Object.keys(params).filter(key => !contract.parameters.includes(key))
 
     if (unsupported.length) {

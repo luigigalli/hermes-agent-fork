@@ -49,6 +49,7 @@ export function readPendingSubmissions(session: string): Record<string, PendingS
     if (!key?.startsWith(ENTRY_PREFIX)) {
       continue
     }
+
     const [owner, id] = parse(key.slice(ENTRY_PREFIX.length), [] as unknown[])
     const entry = parse<null | PendingSubmission>(window.localStorage.getItem(key), null)
 
@@ -94,6 +95,7 @@ function writeEntries(
     for (const [id, entry] of Object.entries(after)) {
       window.localStorage.setItem(entryKey(session, id), JSON.stringify(entry))
     }
+
     delete legacy[session]
 
     if (Object.keys(legacy).length) {

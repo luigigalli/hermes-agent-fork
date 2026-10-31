@@ -68,6 +68,7 @@ async function resolveImagePath(raw: string, base: string): Promise<{ path: stri
     if (path.startsWith('~/')) {
       path = join(homedir(), path.slice(2))
     }
+
     path = resolve(base, path)
 
     try {
@@ -145,6 +146,7 @@ export async function stageImagePath(
   if (bytes.length > MAX_IMAGE_BYTES) {
     throw new Error(t('canonical.images.tooLarge'))
   }
+
   const { mime, ext } = imageFormat(bytes)
   const name = basename(source.path)
 

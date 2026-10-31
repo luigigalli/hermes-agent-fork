@@ -890,6 +890,7 @@ export function sendToGroupChat(
   if (group.startsWith('canonical:')) {
     throw new Error('Canonical rooms are driven by the gateway')
   }
+
   const trimmed = String(text || '').trim()
 
   if (rejectGroupSlashCommand(trimmed)) {

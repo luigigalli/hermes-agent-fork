@@ -500,6 +500,7 @@ test('a registry source that overlaps the primary base is counted once, not twic
     profile: 'default',
     started_at: 650 - index
   }))
+
   const reported = new Map<string, number>()
 
   const fetched = await fetchRegistrySessionRows(
@@ -536,9 +537,11 @@ for (const [label, primaryIds] of [
 ] as const) {
   test(`a registry scope whose primary holds ${label} its sessions totals the 650-session union`, async () => {
     const rows = Array.from({ length: 650 }, (_, i) => ({ id: `s${i}`, profile: 'default', started_at: 650 - i }))
+
     const merged: unknown[] = primaryIds
       .slice(0, 20)
       .map(i => ({ id: `s${i}`, profile: 'default', connection_id: 'R' }))
+
     const profileTotals: Record<string, number> = primaryIds.length ? { default: primaryIds.length } : {}
 
     const contribution = await mergeRegistrySessionRows(

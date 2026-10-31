@@ -432,6 +432,7 @@ export function destroyStalledBody(res: StallWatchableBody, idleMs: number): voi
     if (watching || res.destroyed) {
       return
     }
+
     watching = true
     // Added after the consumer's own listener, so this never switches a reader's mode.
     res.on('data', arm)

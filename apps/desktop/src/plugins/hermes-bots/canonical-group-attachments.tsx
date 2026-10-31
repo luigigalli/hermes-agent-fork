@@ -57,6 +57,7 @@ export function CanonicalGroupAttachments({
     if (disabled) {
       controller.abort()
     }
+
     setBusy(false)
 
     return () => controller.abort()
@@ -66,6 +67,7 @@ export function CanonicalGroupAttachments({
     if (readOnly) {
       return
     }
+
     setBusy(true)
     setError('')
     onUploadingChange?.(true)
@@ -104,6 +106,7 @@ export function CanonicalGroupAttachments({
     if (!signal || signal.aborted || !attachment.attachment_id || !attachment.event_id) {
       return
     }
+
     setBusy(true)
     setError('')
 
@@ -117,6 +120,7 @@ export function CanonicalGroupAttachments({
       if (signal.aborted) {
         return
       }
+
       const bytes = Uint8Array.from(atob(result.data_base64), char => char.charCodeAt(0))
       downloadCanonicalAttachment(bytes, result.name, result.mime, signal)
     } catch (e) {
@@ -142,6 +146,7 @@ export function CanonicalGroupAttachments({
               if (file) {
                 void upload(file)
               }
+
               e.currentTarget.value = ''
             }}
             ref={input}

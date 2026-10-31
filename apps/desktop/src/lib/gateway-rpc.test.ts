@@ -27,6 +27,7 @@ describe('isOfflineMaintenance', () => {
     // Real server form (api-transport.ts::httpStatusError) and its IPC-wrapped twin.
     const detail =
       '{"detail":"Exclusive maintenance refused: Gateway runtime already owns profile /x. Drain and stop the gateway, then retry."}'
+
     expect(isOfflineMaintenance(new Error(`409: ${detail}`))).toBe(true)
     expect(isOfflineMaintenance(new Error(`Error invoking remote method 'hermes:api': Error: 409: ${detail}`))).toBe(
       true

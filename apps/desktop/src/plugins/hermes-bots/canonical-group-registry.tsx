@@ -102,6 +102,7 @@ export function publishCanonicalGroup(
   if (origin === 'key' && key === group) {
     return
   }
+
   const binding = { ...resolved.authority, roomId: resolved.room.room_id, roomName: resolved.room.name }
   const alias = canonicalGroupKeyRoute(group, origin) ? group : canonicalGroupAliasKey(route, group)
   $canonicalGroupBindings.set({ ...$canonicalGroupBindings.get(), [alias]: binding })

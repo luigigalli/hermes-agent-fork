@@ -8,8 +8,10 @@ import { renderMessageStream } from './test-harness'
 
 it('refreshes an idle shared queue and does not let a queued cancellation end a running turn', () => {
   const stream = renderMessageStream('queue-session')
+
   const send = (event: Record<string, unknown>) =>
     act(() => stream.handleEvent({ session_id: 'queue-session', ...event } as never))
+
   send({ type: 'message.start', authority_epoch: 2, execution_generation: 4 })
   send({ type: 'message.complete', authority_epoch: 2, execution_generation: 4, payload: { text: 'done' } })
   const snapshot = { authority_epoch: 2, execution_generation: 4, stored_session_id: 'queue-session', running: false }

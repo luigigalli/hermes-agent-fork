@@ -15,6 +15,7 @@ const room = (log: GroupMessage[]): GroupChatRoom => ({ epoch: 0, log, running: 
 
 it('keeps explicit thread ids and splits only threadless stretches by the 15-minute lull (the fork-era derivation)', () => {
   const t0 = 1_700_000_000_000
+
   const log = [
     entry(t0, 'Kick off', 'user'),
     entry(t0 + 60_000, 'Building', 'member'),
@@ -36,6 +37,7 @@ it('keeps explicit thread ids and splits only threadless stretches by the 15-min
 
 it('keeps fork-era explicit thread ids and buckets their entries', () => {
   const t0 = 1_700_000_000_000
+
   const log = [
     entry(t0, 'Thread A head', 'user', 't1abc'),
     entry(t0 + 5_000, 'Reply in A', 'member', 't1abc'),

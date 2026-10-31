@@ -16,6 +16,7 @@ afterEach(() => {
 test('reopened composer offers exact image occurrence only for its original destination', async () => {
   const request = vi.fn()
   const destination = captureSubmissionDestination('original', request)
+
   const attachments = [
     {
       id: 'image',
@@ -26,6 +27,7 @@ test('reopened composer offers exact image occurrence only for its original dest
       mime: 'image/png'
     }
   ]
+
   const key = preparedSubmissionKey('original', destination, '  retained image  ', attachments)
   await writePreparedSubmission(key, {
     id: 'submission',
@@ -35,9 +37,11 @@ test('reopened composer offers exact image occurrence only for its original dest
     params: { session_id: 'original' }
   })
   const restore = vi.fn()
+
   const view = render(
     <PreparedImageRecovery occupied={false} onRestore={restore} request={request} sessionKey="elsewhere" />
   )
+
   await waitFor(() => expect(request).not.toHaveBeenCalled())
   expect(screen.queryByRole('button')).toBeNull()
   view.rerender(<PreparedImageRecovery occupied={false} onRestore={restore} request={request} sessionKey="original" />)

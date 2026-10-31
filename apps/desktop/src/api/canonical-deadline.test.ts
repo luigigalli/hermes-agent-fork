@@ -29,6 +29,7 @@ test.each([60, 120])('compress follow-up spends only the remaining caller budget
   await client.request('session.resume', { session_id: 's', profile: 'sibling' })
   calls.length = 0
   const controller = new AbortController()
+
   const compression = client.request(
     'session.compress',
     { session_id: 's', profile: 'sibling' },

@@ -25,6 +25,7 @@ function sharedLocks() {
       if (held.has(name) && options.ifAvailable) {
         return callback(null)
       }
+
       held.add(name)
 
       try {

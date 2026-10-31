@@ -9,6 +9,7 @@ export function downloadCanonicalAttachment(
   if (signal?.aborted) {
     return
   }
+
   const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
   const link = document.createElement('a')
   link.href = url

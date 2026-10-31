@@ -93,6 +93,7 @@ export function createPluginWsUrlHandler(deps: {
   return async (request: PluginWsUrlRequest, webContentsId: number): Promise<PluginWsUrlReply> => {
     const path = pluginWsPath(request?.pluginId, request?.path)
     const { connectionId, profile } = request
+
     const ensure = () =>
       connectionId ? deps.ensureRegistryBackend(connectionId, profile) : deps.ensureBackend(profile)
 
@@ -117,6 +118,7 @@ export function createPluginWsUrlHandler(deps: {
       if (isMintPermissionRefusal(error)) {
         return { refused: 'permission' }
       }
+
       throw error
     }
   }

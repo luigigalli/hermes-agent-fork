@@ -88,6 +88,7 @@ export function packBento(items: CatalogEntry[], columns = BENTO_COLUMNS, maxRow
       if (w === 2) {
         wides--
       }
+
       claim(column, row, w, 1)
       tiles.push({ entry, variant: 'compact', column, row, w, h: 1 })
       column += w

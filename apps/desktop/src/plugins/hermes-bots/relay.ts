@@ -453,10 +453,12 @@ async function syncRelayRosters() {
     relay.rosterClearedFor = null
 
     const agentsByConnection = new Map<string, RelayAgentRow[]>()
+
     // One profiles.list per connection: its routes share a socket and answer one profile set.
     const firstRoutes = connections.filter(
       (connection, index) => connections.findIndex(other => other.id === connection.id) === index
     )
+
     await Promise.all(
       firstRoutes.map(async connection => {
         const agents = await relayAgentsOn(connection, labels)
@@ -774,6 +776,7 @@ async function deliverRelayEnvelope(
     if (!reason || reason === 'runtime_unavailable') {
       return
     }
+
     await postReply({
       error: String(error?.message || error || 'delivery failed'),
       ...(reason

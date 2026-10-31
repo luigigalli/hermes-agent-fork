@@ -88,6 +88,7 @@ test.skipIf(process.platform === 'win32').each([0o700, 0o750, 0o701])(
     // profile_id, so the endpoint must carry the realpath or identities never match.
     const home = await shortSocketTmpDir('desktop-http-')
     await fs.chmod(home, mode)
+
     const endpoint = {
       profile_id: home,
       instance_id: 'owner',
@@ -97,6 +98,7 @@ test.skipIf(process.platform === 'win32').each([0o700, 0o750, 0o701])(
       capabilities: ['session-authority-v1'],
       supervisor: 'none'
     }
+
     const requests: any[] = []
 
     const server = net.createServer(socket =>
@@ -214,6 +216,7 @@ test.skipIf(process.platform === 'win32')(
 
     await new Promise<void>(resolve => server.listen(path.join(root, 'gateway.sock'), resolve))
     await fs.chmod(path.join(root, 'gateway.sock'), 0o600)
+
     const endpoint = {
       profile_id: secondary,
       instance_id: 'mux',
@@ -248,10 +251,12 @@ test('ensure consumes structured readiness without acquiring a child owner', asy
     capabilities: ['session-authority-v1'],
     supervisor: 'none'
   }
+
   const connection = await ensureLocalGateway(async () => ({
     code: 0,
     stdout: JSON.stringify({ state: 'ready', endpoint })
   }))
+
   expect(connection.baseUrl).toBe(endpoint.api_origin)
   expect(connection.gatewayEndpoint).toEqual(endpoint)
   expect(connection).not.toHaveProperty('process')
@@ -275,11 +280,14 @@ test('a restart-wait owner is attached to answer a parked prompt; a plain drain 
     supervisor: 'none',
     code_sha: 'old'
   }
+
   const restartStale = vi.fn(async () => ({ done: Promise.resolve() }))
+
   const wait = {
     code: 6,
     stdout: JSON.stringify({ state: 'draining', reason_code: 'restart_wait', endpoint, client_code_sha: 'new' })
   }
+
   const connection = await ensureLocalGateway(async () => wait, undefined, restartStale)
   expect(connection.gatewayEndpoint).toEqual(endpoint)
   expect(restartStale).not.toHaveBeenCalled() // already restarting: never a second restart
@@ -295,6 +303,7 @@ test('a stale owner this window restarts is attached in its restart wait before 
   // `hermes gateway restart` waits for the old owner to exit; a turn parked on approval/clarify
   // there waits for an answer only this window can give. Awaiting the restart first deadlocked both.
   const { createStaleGatewayRestarter } = await import('./local-gateway')
+
   const endpoint = {
     profile_id: '/h',
     instance_id: 'old',
@@ -329,10 +338,12 @@ test('a stale owner this window restarts is attached in its restart wait before 
   ]
 
   const attached = ensureLocalGateway(async () => answers.shift()!, undefined, restartStale)
+
   const outcome = await Promise.race([
     attached,
     new Promise(resolve => setTimeout(() => resolve('blocked on the restart'), 500))
   ])
+
   finishRestart()
   expect(outcome).toMatchObject({ gatewayEndpoint: { instance_id: 'old' } })
   expect(restarted).toEqual(['default'])
@@ -346,6 +357,7 @@ test('an ensure child that never reached the protocol boundary is diagnosed from
     stderr:
       "usage: hermes gateway [-h] ...\nhermes gateway: 'ensure' is not a `hermes gateway` command.\nRun `hermes gateway --help` to see all commands.\n"
   }
+
   await expect(ensureLocalGateway(async () => legacy)).rejects.toThrow(
     /produced no result \(exit 2\): Run `hermes gateway --help`/
   )
@@ -373,6 +385,7 @@ test('private dial credential is one-use and bound to the requesting native wind
   dial.searchParams.delete('ticket')
   const url = dial.toString()
   expect(url).not.toContain('private-ticket')
+
   const details = {
     url,
     webContentsId: 8,
@@ -382,6 +395,7 @@ test('private dial credential is one-use and bound to the requesting native wind
       'Sec-WebSocket-Protocol': 'hermes-gateway-v1, hermes-gateway-ticket.private-ticket'
     }
   }
+
   expect(dials.headers(details)).toBeNull()
   // The dial may cross a loopback proxy that rewrites host:port but keeps the nonce.
   const proxied = url.replace('127.0.0.1:1234', '127.0.0.1:4321')
@@ -418,6 +432,7 @@ test('a dial against a replaced local gateway forgets the cached endpoint once a
 
 test('a redial whose re-ensure comes back without a gateway endpoint names that, not a TypeError', async () => {
   const { localGatewayDial } = await import('./local-gateway')
+
   const endpoint = {
     profile_id: '/h',
     control_home: null,
@@ -428,6 +443,7 @@ test('a redial whose re-ensure comes back without a gateway endpoint names that,
     capabilities: ['session-authority-v1'],
     supervisor: 'none'
   }
+
   const mint = vi.fn(async () => {
     throw new Error('Gateway ticket control socket missing')
   })
@@ -447,6 +463,7 @@ test('a ready owner running other code than this Hermes is restarted once, then 
   // After `hermes update` the live gateway still serves the old code and answers model calls
   // 503 "Restart required"; attaching to it on every dial pinned the user to it forever.
   const { createStaleGatewayRestarter } = await import('./local-gateway')
+
   const endpoint = {
     profile_id: '/h/profiles/w',
     control_home: '/h',
@@ -458,19 +475,23 @@ test('a ready owner running other code than this Hermes is restarted once, then 
     supervisor: 'none',
     code_sha: 'OLD'
   }
+
   const answers = [
     { ...endpoint, code_sha: 'old' },
     { ...endpoint, instance_id: 'new', code_sha: 'new' },
     endpoint,
     endpoint
   ]
+
   const restarted: string[] = []
+
   const restartStale = createStaleGatewayRestarter(
     async owner => {
       restarted.push(owner)
     },
     () => undefined
   )
+
   const ensure = () =>
     ensureLocalGateway(
       async () => ({
@@ -523,6 +544,7 @@ test.skipIf(process.platform === 'win32')(
     // profile_id, so the endpoint must carry the realpath or identities never match.
     const home = await shortSocketTmpDir('desktop-redial-')
     const socketPath = path.join(home, 'gateway.sock')
+
     const endpoint = {
       profile_id: home,
       instance_id: 'owner',
@@ -591,6 +613,7 @@ test.skipIf(process.platform === 'win32')(
       if (replacement) {
         await stop(replacement)
       }
+
       await fs.rm(home, { recursive: true, force: true })
     }
   }
@@ -612,6 +635,7 @@ test.skipIf(process.platform === 'win32')(
     const hash = crypto.createHash('sha256').update(home).digest('hex').slice(0, 16)
     const socketPath = path.join(runtime, `hermes-gw-${hash}`, 'control.sock')
     const pointer = path.join(home, 'gateway.sock.path')
+
     const endpoint = {
       profile_id: home,
       instance_id: 'owner',
@@ -621,6 +645,7 @@ test.skipIf(process.platform === 'win32')(
       capabilities: ['session-authority-v1'],
       supervisor: 'none'
     }
+
     await fs.mkdir(path.dirname(socketPath), { mode: 0o700 })
 
     const server = net.createServer(socket =>
@@ -686,6 +711,7 @@ test.skipIf(process.platform === 'win32')(
     // profile_id, so the endpoint must carry the realpath or identities never match.
     const home = await shortSocketTmpDir('desktop-unsafe-')
     const socketPath = path.join(home, 'gateway.sock')
+
     const endpoint = {
       profile_id: home,
       instance_id: 'owner',
@@ -695,6 +721,7 @@ test.skipIf(process.platform === 'win32')(
       capabilities: ['session-authority-v1'],
       supervisor: 'none'
     }
+
     const server = net.createServer(socket => socket.end())
     await new Promise<void>(resolve => server.listen(socketPath, resolve))
     await fs.chmod(socketPath, 0o660)
@@ -725,6 +752,7 @@ test.skipIf(process.platform === 'win32')(
     const { mintLocalGatewayTicket } = await import('./local-gateway')
     const home = await shortSocketTmpDir('desktop-home-mode-')
     const socketPath = path.join(home, 'gateway.sock')
+
     const endpoint = {
       profile_id: home,
       instance_id: 'owner',
@@ -781,6 +809,7 @@ test('a ?profile= request on the shared host descriptor mints for the sibling pr
     supervisor: 'none',
     control_home: null
   }
+
   expect(
     routedGatewayEndpoint(endpoint, 'http://127.0.0.1:1/api/sessions?profile=p2', path.resolve('hermes-home'))
   ).toMatchObject({
@@ -839,6 +868,7 @@ test('every named Profiles-screen route mints for its profile; collection routes
     supervisor: 'none',
     control_home: null
   }
+
   const route = (p: string) => routedGatewayEndpoint(endpoint, `http://127.0.0.1:1${p}`, endpoint.profile_id).profile_id
 
   for (const p of [
@@ -877,6 +907,7 @@ test('a profile named like a collection route still gets its own ticket', () => 
     supervisor: 'none',
     control_home: null
   }
+
   const route = (p: string) => routedGatewayEndpoint(endpoint, `http://127.0.0.1:1${p}`, endpoint.profile_id).profile_id
 
   for (const name of ['projects', 'sessions', 'active', 'import']) {
@@ -900,6 +931,7 @@ test('a sidebar read mints for the profile its recents_profile names', () => {
     supervisor: 'none',
     control_home: path.resolve('hermes-home')
   }
+
   expect(
     routedGatewayEndpoint(
       endpoint,
@@ -948,9 +980,12 @@ test.skipIf(process.platform === 'win32')(
     const fs = await import('node:fs/promises')
     const os = await import('node:os')
     const path = await import('node:path')
+
     const { configurePythonGatewayTicketClient, isStaleLocalGatewayError, mintLocalGatewayTicket } =
       await import('./local-gateway')
+
     const home = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'desktop-group-home-')))
+
     const endpoint = {
       profile_id: home,
       instance_id: 'owner',
@@ -960,6 +995,7 @@ test.skipIf(process.platform === 'win32')(
       capabilities: ['session-authority-v1'],
       supervisor: 'none'
     }
+
     const calls: string[] = []
     let verdict: 'grant' | 'shared' = 'grant'
 

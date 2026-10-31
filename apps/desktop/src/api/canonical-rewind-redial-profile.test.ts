@@ -74,6 +74,7 @@ test('a named-profile owner re-presents a lost rewind after a redial', async () 
     await closed
 
     await client.connect(url)
+
     const replayed = await client.request<{ rewound_count?: number }>('session.rewind', {
       session_id: 's',
       derived_target: true,
@@ -90,6 +91,7 @@ test('a named-profile owner re-presents a lost rewind after a redial', async () 
     for (const peer of server.clients) {
       peer.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })

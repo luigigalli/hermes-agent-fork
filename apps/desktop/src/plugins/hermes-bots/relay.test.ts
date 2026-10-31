@@ -931,6 +931,7 @@ describe('the drain loop wires drain → deliver → reply', () => {
         if (call.connectionId !== 'a' || drained) {
           return { envelopes: [] }
         }
+
         drained = true
 
         return { envelopes: [envelope] }
@@ -1308,12 +1309,14 @@ describe('the drain loop does not let one delivery hold every other gateway’s 
   // and the sender's waiter is finite.
   type RelayEnvelopeFixture = { id: string; message: string; target_connection: string; target_profile: string }
   const toB: RelayEnvelopeFixture = { id: 'env-1', message: 'long job', target_connection: 'b', target_profile: 'ops' }
+
   const toA: RelayEnvelopeFixture = {
     id: 'env-2',
     message: 'quick one',
     target_connection: 'a',
     target_profile: 'default'
   }
+
   // Canonical `bot_relay.deliver` answers carry the exact delivery identity;
   // a reply without it is retained for recovery, never ACKed to the sender.
   const settled = (id: string, reply: string) => ({

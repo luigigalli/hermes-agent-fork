@@ -137,15 +137,18 @@ test('a voice_stopped prompt.submit reply is a settled no-admission receipt, nev
 
 test('canonical receipts preserve admission identity and replay restores fenced controls', () => {
   const protocol = new CanonicalDesktopProtocol()
+
   const receipt = protocol.result(
     'prompt.submit',
     { session_id: 's', submission_id: 'input' },
     { admission_id: 'admission', ref: { session_id: 's', profile_id: '/tmp/profile' }, status: 'queued' }
   )
+
   expect(receipt).toMatchObject({ admission_id: 'admission', submission_id: 'input', session_id: 's' })
   expect(() => protocol.result('prompt.submit', { session_id: 'other', submission_id: 'input' }, receipt)).toThrow(
     'destination'
   )
+
   const resumed = protocol.result(
     'session.resume',
     { session_id: 's' },
@@ -156,6 +159,7 @@ test('canonical receipts preserve admission identity and replay restores fenced 
       prompts: [{ kind: 'approval', prompt_id: 'p', execution_generation: 3, command: 'test' }]
     }
   )
+
   expect(resumed.pending_approval).toMatchObject({ request_id: 'p', execution_generation: 3 })
   expect(protocol.prepare('approval.respond', { session_id: 's', request_id: 'p', choice: 'once' })).toEqual({
     session_id: 's',
@@ -191,12 +195,14 @@ test('a stored-parent branch travels as the canonical branch mutation on the par
   // policy), so every resume on it answers not_found and the first submit never leaves.
   const protocol = new CanonicalDesktopProtocol()
   protocol.result('session.resume', { session_id: 'p' }, { session_id: 'p', revision: 3, execution_generation: 1 })
+
   const prepared = protocol.prepare('session.branch_stored', {
     cols: 96,
     source: 'desktop',
     parent_session_id: 'p',
     profile: 'default'
   })
+
   expect(protocol.wire('session.branch_stored', prepared)).toBe('session.mutate')
   expect(prepared).toMatchObject({
     session_id: 'p',
@@ -205,6 +211,7 @@ test('a stored-parent branch travels as the canonical branch mutation on the par
     expected_revision: 3,
     expected_generation: 1
   })
+
   const child = protocol.result('session.branch_stored', prepared, {
     session_id: 'p',
     revision: 4,
@@ -212,6 +219,7 @@ test('a stored-parent branch travels as the canonical branch mutation on the par
     branched_session_id: 'c',
     copied_messages: 4
   })
+
   expect(child).toMatchObject({ session_id: 'c', stored_session_id: 'c', parent_session_id: 'p', message_count: 4 })
 })
 
@@ -229,6 +237,7 @@ test('composer branch and model switch become canonical prepared mutations with 
     payload: {}
   })
   expect(protocol.prepare('session.branch', { session_id: 's' })).toEqual(branch)
+
   const branched = protocol.result('session.branch', branch, {
     session_id: 's',
     revision: 5,
@@ -236,6 +245,7 @@ test('composer branch and model switch become canonical prepared mutations with 
     branched_session_id: 'child',
     copied_messages: 6
   })
+
   expect(branched).toMatchObject({ session_id: 'child', stored_session_id: 'child', parent_session_id: 's' })
   expect(protocol.prepare('session.branch', { session_id: 's' }).request_id).not.toBe(branch.request_id)
 
@@ -356,6 +366,7 @@ test('the dedicated compress action becomes a fenced canonical mutation and sett
     target_session_id: 's',
     message_count: 3
   })
+
   const settled = await protocol.settle('session.compress', prepared, receipt, fakeRequest)
 
   expect(settled.messages).toEqual(resumed.messages)
@@ -417,12 +428,14 @@ test('the composer model picker travels as the canonical model mutation, not an 
 test('a message-level branch carries its durable boundary row; a whole-chat branch copies everything', () => {
   const protocol = new CanonicalDesktopProtocol()
   protocol.result('session.resume', { session_id: 's' }, { session_id: 's', revision: 3, execution_generation: 1 })
+
   const selected = protocol.prepare('session.branch', {
     session_id: 's',
     idempotency_key: 'k',
     count: 2,
     through_message_id: 41
   })
+
   expect(protocol.wire('session.branch', selected)).toBe('session.mutate')
   expect(selected).toMatchObject({ operation: 'branch', payload: { through_message_id: 41 } })
   // A lost-response retry presents the identical mutation (the boundary is part of its identity).

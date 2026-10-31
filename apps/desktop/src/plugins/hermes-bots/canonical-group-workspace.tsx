@@ -503,11 +503,7 @@ function CanonicalRoomView({
           <CanonicalGroupRoster label={labels.members} members={state?.room.members} />
         </div>
         <Tip label={labels.manageMembers}>
-          <Button
-            aria-label={labels.manageMembers}
-            disabled={busy || !state}
-            onClick={() => setMembersOpen(true)}
-          >
+          <Button aria-label={labels.manageMembers} disabled={busy || !state} onClick={() => setMembersOpen(true)}>
             <Codicon name="organization" />
           </Button>
         </Tip>

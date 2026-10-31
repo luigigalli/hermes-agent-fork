@@ -75,6 +75,7 @@ function mount(
     if (method === 'prompt.cancel') {
       return cancel()
     }
+
     throw new Error(`unexpected RPC: ${method}`)
   })
 
@@ -371,6 +372,7 @@ it('projects canonical pending rows onto the legacy pending_submissions shape fo
 
 it('does not admit an edited replacement while the original row is still being retired, and keeps it as a retryable draft when retirement is refused', async () => {
   let release!: (value: unknown) => void
+
   const h = mount(
     'queue',
     () =>
@@ -422,6 +424,7 @@ it('keeps the edited text as an unconfirmed durable draft when the store refuses
 
 it('re-admits an edited row to the session it was edited in, even when the user has switched to another busy session before retirement', async () => {
   let release!: (value: unknown) => void
+
   const h = mount(
     'queue',
     () =>

@@ -43,6 +43,7 @@ async function sameDirectory(a: string, b: string): Promise<boolean> {
 async function pythonResolve(homes: string[]): Promise<string[]> {
   const script =
     'import json, sys; from pathlib import Path; print(json.dumps([str(Path(p).resolve()) for p in sys.argv[1:]]))'
+
   const { stdout } = await promisify(execFile)(PYTHON, ['-c', script, ...homes], { windowsHide: true })
 
   return JSON.parse(stdout)
@@ -133,9 +134,11 @@ test.skipIf(process.platform === 'win32')(
       await expect(
         mintLocalGatewayTicket({ ...endpointFor(root), control_home: path.join(links, 'home') }, 'native-http')
       ).rejects.toThrow('Noncanonical gateway profile')
+
       const gone = await nativeGatewayHttpHeaders(descriptor, `${ORIGIN}/api/sessions?profile=gone`).catch(
         error => error
       )
+
       expect([gone.message.includes(`Profile 'gone' does not exist`), isStaleLocalGatewayError(gone)]).toEqual([
         true,
         false

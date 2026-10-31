@@ -1308,6 +1308,7 @@ async function allProfilesSessionList(url: URL, profiles: readonly string[], fet
   const limit = Math.max(0, Number(url.searchParams.get('limit') ?? 20) || 0)
   const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0)
   const created = url.searchParams.get('order') === 'created'
+
   const reads = await readEachProfile(profiles, profile =>
     readProfileSessionRows(url, profile, limit + offset, fetchPage)
   )

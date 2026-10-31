@@ -20,6 +20,7 @@ export function preparedJournal(userData: string, origin: string) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return {}
       }
+
       throw error
     }
 
@@ -76,6 +77,7 @@ export function preparedJournal(userData: string, origin: string) {
       if (JSON.stringify(current) !== JSON.stringify(expected)) {
         return { applied: false, current }
       }
+
       write(journal, key, entry)
 
       return { applied: true, current: entry }

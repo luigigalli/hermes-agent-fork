@@ -13,8 +13,8 @@ import { Codicon } from '@hermes/plugin-sdk'
 import { useState } from 'react'
 
 import { legacyArchiveThreads } from './canonical-group-legacy-archive'
-import { useBots } from './i18n'
 import type { GroupChatRoom } from './group-chat'
+import { useBots } from './i18n'
 import type { GroupMessage } from './types'
 
 /** One archived thread: its rows in arrival order, read-only. Images ride the

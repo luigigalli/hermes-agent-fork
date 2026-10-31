@@ -27,6 +27,7 @@ export function observeDownloads() {
     if (!blob) {
       throw new Error('Download did not use the provided bytes')
     }
+
     downloads.push({ blob, name: this.download, connected: this.isConnected })
   })
 

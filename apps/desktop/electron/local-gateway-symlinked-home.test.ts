@@ -14,6 +14,7 @@ test.skipIf(process.platform === 'win32')('a sibling route under a symlinked lau
   const real = path.join(base, 'real')
   fs.mkdirSync(path.join(real, 'profiles', 'work'), { recursive: true })
   fs.symlinkSync(real, path.join(base, 'link'))
+
   const endpoint = {
     profile_id: real,
     instance_id: 'i',

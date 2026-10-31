@@ -6,8 +6,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { CanonicalGroupLegacyHistory } from './canonical-group-legacy-history'
 import { $groupChats } from './group-chat'
-import { $groupThreadReads } from './group-thread-pane'
 import { GroupChatWorkspace } from './group-chat-view'
+import { $groupThreadReads } from './group-thread-pane'
 import { translateBots } from './i18n-test-helper'
 
 // The projection contract (t_97e2e058): the pane is a READ-ONLY projection —
@@ -50,6 +50,7 @@ const state = {
 const roster = [{ name: 'alpha', connectionId: 'local' }]
 const members = roster.map(m => ({ member_id: m.name, profile: m.name, handle: m.name }))
 const t0 = 1_700_000_000_000
+
 const archived = {
   epoch: 0,
   log: [

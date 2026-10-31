@@ -13,6 +13,7 @@ describe('refreshSlashCatalogOnSkillsChange', () => {
       pairs: [['/new-skill', 'd']],
       skill_count: 1
     }))
+
     const setCatalog = vi.fn()
 
     patchUiState({ sid: 'sid-cfg8' })

@@ -19,6 +19,7 @@ async function fakeHermes(kind: 'new' | 'old') {
 
   const bin = path.join(dir, 'hermes')
   await fs.writeFile(bin, `#!/bin/sh\necho "$*" >> "${calls}"\n${reject}echo "✓ restarted"\n`, { mode: 0o755 })
+
   const run = (args: string[]) =>
     runGatewayEnsure(
       { command: bin, args, env: {}, shell: false },

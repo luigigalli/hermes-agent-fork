@@ -30,9 +30,11 @@ test('named canonical prompt listeners receive replay-safe IDs before answering 
   const client = new HermesGateway()
   let projected: any
   let received!: () => void
+
   const ready = new Promise<void>(resolve => {
     received = resolve
   })
+
   client.on('approval.request', event => {
     projected = { ...(event.payload as object) }
     received()
@@ -51,6 +53,7 @@ test('named canonical prompt listeners receive replay-safe IDs before answering 
     for (const socket of server.clients) {
       socket.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })
@@ -91,6 +94,7 @@ test('a legacy (non-canonical) dial strips canonical-only identity keys the serv
     for (const socket of server.clients) {
       socket.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })
@@ -131,6 +135,7 @@ test("a legacy dial branches from a message with the serve contract's count, nev
     for (const socket of server.clients) {
       socket.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })
@@ -268,6 +273,7 @@ test('shared-socket equal-ID streams use replay owners and unknown epochs reconc
     for (const peer of server.clients) {
       peer.terminate()
     }
+
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })

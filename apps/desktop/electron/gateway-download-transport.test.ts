@@ -161,6 +161,7 @@ test.skipIf(process.platform === 'win32')(
 
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
     const baseUrl = `http://127.0.0.1:${(server.address() as net.AddressInfo).port}`
+
     const gatewayEndpoint = {
       profile_id: home,
       instance_id: 'owner',
@@ -185,6 +186,7 @@ test.skipIf(process.platform === 'win32')(
       const bytes = await downloadViaTokenToFile(baseUrl + '/api/fs/download', '', {}, finish, {
         gatewayDescriptor: { baseUrl, gatewayEndpoint }
       })
+
       expect(bytes).toEqual(Buffer.from([0, 255, 1, 2, 128]))
       expect(wire.map(h => h['x-hermes-gateway-ticket'])).toEqual(grants)
       expect(new Set(grants).size).toBe(2)

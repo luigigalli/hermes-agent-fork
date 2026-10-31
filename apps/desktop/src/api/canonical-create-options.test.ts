@@ -12,8 +12,10 @@ import { HermesGateway } from './client'
 const doc = JSON.parse(
   readFileSync(join(process.cwd(), '..', 'shared', 'src', 'gateway-contract.openrpc.json'), 'utf8')
 )
+
 const createRef = doc['x-canonical-methods'].find((m: { name: string }) => m.name === 'session.create').params[0].schema
   .$ref
+
 const CREATE_KEYS = new Set(Object.keys(doc.components.schemas[createRef.split('/').at(-1)].properties))
 
 const BASE = { cols: 96, source: 'desktop', profile: 'default' }
@@ -124,6 +126,7 @@ test.each(CASES)(
       for (const socket of server.clients) {
         socket.terminate()
       }
+
       await new Promise<void>(resolve => server.close(() => resolve()))
     }
   }

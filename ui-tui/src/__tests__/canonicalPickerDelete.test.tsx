@@ -18,6 +18,7 @@ const stored = {
   started_at: 1,
   message_count: 2
 }
+
 const live = {
   id: 'live',
   session_id: 'live',

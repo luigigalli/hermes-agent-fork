@@ -23,6 +23,7 @@ const { request, notify, openWorkspace, activation } = vi.hoisted(() => ({
   openWorkspace: vi.fn(),
   activation: { epoch: 1 }
 }))
+
 vi.mock('@hermes/plugin-sdk', async importOriginal => {
   const sdk = await importOriginal<typeof HermesSdk>()
   const { en } = await import('@/i18n/en')
@@ -152,6 +153,7 @@ function answer(capabilities: unknown) {
     if (method === 'profiles.configure') {
       return {}
     }
+
     throw new Error(`Unexpected RPC: ${method}`)
   })
 }
@@ -164,6 +166,7 @@ async function submitDialog() {
   for (const checkbox of screen.getAllByRole('checkbox').slice(0, 3)) {
     fireEvent.click(checkbox)
   }
+
   await waitFor(() => expect(request.mock.calls.map(call => call[1])).toContain('groups.capabilities'))
   await act(async () => {})
   const submit = screen.getByRole('button', { name: 'Create Group (2)' }) as HTMLButtonElement
@@ -263,6 +266,7 @@ it('canonical creation offers only members on the current connection before subm
   for (const checkbox of screen.getAllByRole('checkbox').slice(0, 2)) {
     fireEvent.click(checkbox)
   }
+
   const submit = screen.getByRole('button', { name: 'Create Group (2)' }) as HTMLButtonElement
   await waitFor(() => expect(submit.disabled).toBe(false))
   expect(baseElement.querySelector('[data-bot-face="remote"]')).toBeNull()
@@ -305,6 +309,7 @@ it('rechecks the current mode before creating after a mixed legacy selection', a
   const { baseElement } = render(
     <CreateGroupChatDialog onClose={onClose} onCreated={onCreated} open roster={mixedRoster} />
   )
+
   await waitFor(() => expect(capabilityReads).toBe(1))
   await waitFor(() => {
     expect(baseElement.querySelector('[data-bot-face="remote"]')).not.toBeNull()
@@ -314,6 +319,7 @@ it('rechecks the current mode before creating after a mixed legacy selection', a
   for (const checkbox of screen.getAllByRole('checkbox').slice(0, 3)) {
     fireEvent.click(checkbox)
   }
+
   const submit = screen.getByRole('button', { name: 'Create Group (3)' })
   expect((submit as HTMLButtonElement).disabled).toBe(false)
 
@@ -356,6 +362,7 @@ it.each(['profile', 'gateway', 'same-route-activation'] as const)(
     for (const checkbox of screen.getAllByRole('checkbox').slice(0, 2)) {
       fireEvent.click(checkbox)
     }
+
     const submit = screen.getByRole('button', { name: 'Create Group (2)' })
     await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false))
 
@@ -405,6 +412,7 @@ it.each(['profile', 'gateway', 'same-route-activation'] as const)(
     for (const checkbox of screen.getAllByRole('checkbox').slice(0, 2)) {
       fireEvent.click(checkbox)
     }
+
     const submit = screen.getByRole('button', { name: 'Create Group (2)' })
     await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false))
 

@@ -67,6 +67,7 @@ export function slashMutation(command: string): { operation: string; payload: Re
     if (!arg || arg.startsWith('-') || /(^|\s)--/.test(arg)) {
       return null
     }
+
     const [model, ...flags] = arg.split(/\s+/)
 
     return flags.length ? null : { operation: 'model', payload: { model } }
@@ -89,6 +90,7 @@ export function pickerModelMutation(value: unknown): { model: string; provider: 
   const [model, ...flags] = String(value ?? '')
     .trim()
     .split(/\s+/)
+
   const sessionOnly = flags.at(-1) === '--session'
   const rest = sessionOnly ? flags.slice(0, -1) : flags
 
@@ -157,6 +159,7 @@ const RELAY_SENDER_STAMP = /^(Message from 🤖 [\s\S]+? \(@)[A-Za-z0-9_-]+(\): 
 function canonicalBotDelivery(params: Record<string, unknown>): Record<string, unknown> {
   const { from_profile: rawProfile, from_handle: rawHandle, from_connection: rawConnection, ...rest } = params
   const [profile, connection] = [String(rawProfile ?? '').trim(), String(rawConnection ?? '').trim()]
+
   const handle = String(rawHandle ?? '')
     .trim()
     .replace(/^@/, '')
@@ -170,7 +173,9 @@ function canonicalBotDelivery(params: Record<string, unknown>): Record<string, u
     name: handle || profile,
     is_bot: true
   }
+
   const qualify = typeof rest.message === 'string' && RELAY_HANDLE.test(handle) && RELAY_HANDLE.test(connection)
+
   const message = qualify
     ? String(rest.message).replace(RELAY_SENDER_STAMP, `$1${handle}@${connection}$2`)
     : rest.message
@@ -198,6 +203,7 @@ export function splitRewindSubmit(
   if (!TRUNCATE_KEYS.some(key => key in params)) {
     return null
   }
+
   const row = params.truncate_before_row_id
   const submit = Object.fromEntries(Object.entries(params).filter(([key]) => !TRUNCATE_KEYS.includes(key)))
 
@@ -339,6 +345,7 @@ const POLICY_EDIT_METHODS = new Set(['slash.exec', 'config.set', 'session.worksp
 const BRANCH_METHODS = new Set(['session.branch', 'session.branch_stored', 'session.branch_whole'])
 // Value-setting mutations: re-applying one is harmless, so a later acknowledged edit retires it.
 const VALUE_OPERATIONS = new Set(['rename', 'archive', 'model', 'reasoning', 'workspace'])
+
 // `session.model`: a whole canonical model selection (model / provider / reasoning) plus the owner's
 // token, as the owner asked it (a deferred pick's confirmation): the same request the TUI resends.
 const MUTATION_METHODS = new Set([
@@ -467,11 +474,13 @@ export class CanonicalDesktopProtocol {
     if (retained) {
       return retained
     }
+
     const revision = this.revisions.get(owner)
 
     if (revision === undefined) {
       throw new Error('Session revision unavailable; reopen the session before editing metadata')
     }
+
     const generation = this.generations.get(owner)
 
     if (withGeneration && generation === undefined) {
@@ -712,6 +721,7 @@ export class CanonicalDesktopProtocol {
     if (!confirmation || !(params.confirm_expensive_model || confirmation.sent)) {
       return payload
     }
+
     confirmation.sent = true
 
     return { ...payload, confirm: confirmation.token }
@@ -724,6 +734,7 @@ export class CanonicalDesktopProtocol {
     if (params.operation !== 'model' || typeof payload?.confirm !== 'string') {
       return
     }
+
     const key = this.modelConfirmationKey(params, payload)
 
     if (this.modelConfirmations.get(key)?.token === payload.confirm) {
@@ -737,6 +748,7 @@ export class CanonicalDesktopProtocol {
   // provenance that lets a named profile's own workspace beat an inherited cwd.
   private prepareCreate(input: Record<string, unknown>): Record<string, unknown> {
     const { reasoning_effort: effort, fast, service_tier: picked, ...params } = input
+
     const tier =
       typeof picked === 'string' && picked ? picked : fast === true ? 'priority' : fast === false ? 'normal' : undefined
 
@@ -768,6 +780,7 @@ export class CanonicalDesktopProtocol {
       'service_tier',
       'cwd_explicit'
     ])
+
     const unsupported = Object.keys(params).filter(key => !allowed.has(key))
 
     if (unsupported.length) {
@@ -887,6 +900,7 @@ export class CanonicalDesktopProtocol {
     if (!payload || !event.session_id) {
       return
     }
+
     const sid = event.session_id
     const profile = canonicalProfile(event.profile)
     const owner = canonicalSessionKey(sid, profile)
@@ -903,6 +917,7 @@ export class CanonicalDesktopProtocol {
       if (generation < current) {
         return
       }
+
       this.generations.set(owner, generation)
     }
 
@@ -950,6 +965,7 @@ export class CanonicalDesktopProtocol {
 
     const mutation =
       MUTATION_METHODS.has(method) || (POLICY_EDIT_METHODS.has(method) && typeof params.operation === 'string')
+
     this.adoptRevision(params, value, mutation)
 
     if (mutation) {
@@ -986,6 +1002,7 @@ export class CanonicalDesktopProtocol {
     if (typeof value.session_id !== 'string' || typeof value.revision !== 'number') {
       return
     }
+
     const owner = canonicalSessionKey(value.session_id, params.profile)
 
     if (!mutation || value.revision >= (this.revisions.get(owner) ?? -1)) {
@@ -1077,6 +1094,7 @@ export class CanonicalDesktopProtocol {
     if (typeof revision !== 'number') {
       return
     }
+
     const owner = canonicalSessionKey(params.session_id, params.profile)
 
     for (const [key, mutation] of this.mutations) {
@@ -1141,6 +1159,7 @@ export class CanonicalDesktopProtocol {
     if (value?.status === 'preview') {
       return { ...value, host_ack: { output: (value.lines as string[]).join('\n') } }
     }
+
     const resumed = await request('session.resume', {
       session_id: params.session_id,
       ...(params.profile !== undefined ? { profile: params.profile } : {})

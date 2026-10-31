@@ -591,6 +591,7 @@ export function GroupChatWorkspace(props: GroupChatWorkspaceProps) {
   const bindings = useValue($canonicalGroupBindings)
   const connectionId = useValue(host.state.connectionId)
   const profile = useValue(host.state.profile)
+
   const binding = canonicalGroupBindingFor(
     bindings,
     { connectionId: connectionId ?? '', profile },
@@ -629,6 +630,7 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
     if (mode !== 'canonical') {
       return
     }
+
     let cancelled = false
     setLookup({ source, status: 'pending' })
     setError('')
@@ -1178,10 +1180,12 @@ function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: Gr
   const [threadsOpen, setThreadsOpen] = useState(false)
   const threadReads = useValue($groupThreadReads)
   const activeThreadId = replyThread || null
+
   const threads = useMemo(
     () => deriveGroupThreads(room.log || [], activeThreadId || undefined),
     [room.log, activeThreadId]
   )
+
   const activeThreadIdRef = activeThreadId || 'legacy'
 
   const threadRows = threads.map(thread => {

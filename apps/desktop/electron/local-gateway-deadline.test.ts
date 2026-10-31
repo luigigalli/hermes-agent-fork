@@ -19,6 +19,7 @@ test('an ensure client that ignores termination is killed and its promise reject
 
   vi.doMock('node:child_process', () => ({ spawn: () => child }))
   const { runGatewayEnsure } = await import('./local-gateway')
+
   const result = runGatewayEnsure(
     { command: 'owned-client', args: [], env: {}, shell: false },
     '.',
@@ -26,6 +27,7 @@ test('an ensure client that ignores termination is killed and its promise reject
     {},
     { timeoutMs: 10 }
   )
+
   const rejected = expect(result).rejects.toThrow('timed out')
   await vi.advanceTimersByTimeAsync(10)
   expect(child.kill.mock.calls).toEqual([[]])
@@ -64,6 +66,7 @@ test('a stale-owner restart client that times out but obeys SIGTERM is logged an
       {},
       { timeoutMs: 10, label: 'hermes gateway restart' }
     )
+
     const reason = `${result.stdout}\n${result.stderr}`.trim().split(/\r?\n/).filter(Boolean).pop()
     logs.push(`gateway restart exited ${result.code}${reason ? `: ${reason}` : ''}`)
   }
@@ -77,10 +80,12 @@ test('a stale-owner restart client that times out but obeys SIGTERM is logged an
     capabilities: ['session-authority-v1'],
     supervisor: 'none'
   }
+
   const answers = [
     { ...endpoint, code_sha: 'old' },
     { ...endpoint, instance_id: 'new', code_sha: 'new' }
   ]
+
   let ensures = 0
 
   const attached = ensureLocalGateway(

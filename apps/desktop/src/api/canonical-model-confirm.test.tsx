@@ -116,11 +116,13 @@ test('a typed /model on a canonical session answers the same handshake and its r
 
   expect(refused).toMatchObject({ confirm_required: true, confirm_message: 'pricey IS EXPENSIVE' })
   expect(refused).not.toHaveProperty('model')
+
   const resend = protocol.prepare('slash.exec', {
     session_id: 's',
     command: 'model pricey',
     confirm_expensive_model: true
   })
+
   expect(resend.payload).toEqual({ model: 'pricey', confirm: 'tok-1' })
   expect(resend.request_id).not.toBe(typed.request_id)
   // Consumed: a second refusal is never auto-confirmed with the spent token.
@@ -205,6 +207,7 @@ test('a typed refusal of the confirmed request spends its token; a declined dial
     command: 'model pricey',
     confirm_expensive_model: true
   })
+
   expect(confirmed.payload).toEqual({ model: 'pricey', confirm: 'tok-1' })
   const stale = Object.assign(new Error('stale_generation'), { data: { reason: 'stale_generation' } })
   protocol.failure(confirmed, stale)

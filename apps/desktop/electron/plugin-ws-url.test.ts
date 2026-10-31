@@ -20,12 +20,14 @@ test('a plugin dial carries the grant header once and never in its URL', () => {
   expect(url).not.toContain('grant-1')
   expect(parsed.pathname).toBe('/api/plugins/kanban/events')
   expect(parsed.searchParams.get('board')).toBe('b')
+
   const details = {
     url,
     webContentsId: 7,
     resourceType: 'webSocket',
     requestHeaders: { Origin: 'file://', 'x-hermes-gateway-ticket': 'forged' }
   }
+
   expect(dials.headers({ ...details, webContentsId: 8 })).toBeNull()
   // A different path carrying the same nonce gets nothing.
   expect(dials.headers({ ...details, url: url.replace('/kanban/events', '/other/events') })).toBeNull()
@@ -99,6 +101,7 @@ test('encoded, dot-segment and backslash paths stay inside the plugin namespace 
 
 test('mints a native-http grant for a local gateway and null elsewhere', async () => {
   const mint = vi.fn(async () => 'grant-2')
+
   const prepare = vi.fn(
     (origin: string, path: string, ticket: string, id: number) => `${origin}|${path}|${ticket}|${id}`
   )
@@ -131,10 +134,13 @@ test('a mint refused for a permission reason is a named reply, any other failure
   const unsafe = new Error(
     "Unsafe gateway control path: '/home/u/.hermes' is accessible to other users (mode 755): run chmod go-rwx '/home/u/.hermes'"
   )
+
   const groupWritable = new Error(
     "Profile home is writable by a group other accounts share: run chmod g-w '/home/u/.hermes'"
   )
+
   const bridged = Object.assign(new Error('Gateway ticket bootstrap failed'), { reason: 'unsafe_control_permissions' })
+
   const mint = vi.fn(async (): Promise<string> => {
     throw unsafe
   })
@@ -164,6 +170,7 @@ test('a mint refused for a permission reason is a named reply, any other failure
 test('the shared local dial keeps the gateway socket on an interactive grant', async () => {
   const { localGatewayDial } = await import('./local-gateway')
   const mint = vi.fn(async () => 'interactive-2')
+
   const url = await localGatewayDial({
     ensure: async () => ({ baseUrl: 'http://127.0.0.1:9', gatewayEndpoint: endpoint }),
     forget: vi.fn(),

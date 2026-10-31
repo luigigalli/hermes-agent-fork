@@ -787,10 +787,12 @@ describe('secondary stalled-dial budget', () => {
     ]) {
       closeSecondaryGateways()
       gatewayMocks.instances.length = 0
+
       const getConnectionFor = vi
         .fn()
         .mockResolvedValueOnce(descriptorFor('homelab', 'bot-a'))
         .mockRejectedValue(new Error(permanent))
+
       installDesktop({ getConnectionFor })
 
       await ensureGatewayForAgent('homelab', 'bot-a')

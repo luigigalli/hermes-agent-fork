@@ -116,6 +116,7 @@ it('all sidebar mutations use real counters and surface conflicts without a blin
   for (const invoke of calls) {
     await expect(invoke()).rejects.toThrow('revision_conflict')
   }
+
   vi.mocked(hermesApi)
     .mockReset()
     .mockResolvedValue({ exists: true } as never)
@@ -133,6 +134,7 @@ it('sidebar edits fall back to the base write only when the backend lacks the fe
     if (!request.method || request.method === 'GET') {
       throw new Error(routeMissing)
     }
+
     writes.push(request as never)
 
     return { ok: true } as never
@@ -165,6 +167,7 @@ it('sidebar edits fall back to the base write only when the backend lacks the fe
         if (!request.method || request.method === 'GET') {
           throw new Error(refusal)
         }
+
         writes.push(request as never)
 
         return { ok: true } as never
@@ -179,6 +182,7 @@ it('sidebar edits fall back to the base write only when the backend lacks the fe
 it('sidebar edits on an older headless serve fall back to the base write', async () => {
   const headless =
     '404: {"error":"Headless backend (hermes serve): web UI disabled \u2014 use `hermes dashboard` for the browser UI."}'
+
   const writes: Array<{ method?: string; body?: unknown }> = []
   vi.mocked(hermesApi)
     .mockReset()
@@ -186,6 +190,7 @@ it('sidebar edits on an older headless serve fall back to the base write', async
       if (!request.method || request.method === 'GET') {
         throw new Error(headless)
       }
+
       writes.push(request as never)
 
       return { ok: true } as never
@@ -212,6 +217,7 @@ it('sidebar edits on an older headless serve fall back to the base write', async
       if (!request.method || request.method === 'GET') {
         throw new Error('404: {"detail":"Not Found"}')
       }
+
       writes.push(request as never)
 
       return { ok: true } as never
