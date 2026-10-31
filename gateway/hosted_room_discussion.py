@@ -23,7 +23,11 @@ from gateway.hosted_room_task_input import validate_task_input
 from gateway.hosted_rooms_common import compact_json
 
 
-MAX_DISCUSSION_MEMBERS = 6
+# Luigi 31/10 (plenaria flotta, canone fork: come il legacy 4609c8ae18
+# desktop(group-chat) max members 6->16). 16 copre l'intera flotta (12 profili
+# + Merk + revisore + gitops + default). MIN resta 2; il tetto duro del driver
+# resta MAX_MEMBERS=128 in hosted_rooms.py.
+MAX_DISCUSSION_MEMBERS = 16
 MIN_DISCUSSION_MEMBERS = 2
 MAX_DISCUSSION_ROUNDS = 3
 MAX_DISCUSSION_MESSAGES = 10
@@ -277,7 +281,7 @@ def _validate_member(raw: Any, index: int, known_profiles: set[str]) -> Discussi
 
 
 def validate_roster(value: Any, *, local_profiles: Iterable[str]) -> tuple[DiscussionMember, ...]:
-    """Validate a frozen 2-6 member roster of profiles on this gateway."""
+    """Validate a frozen 2-16 member roster of profiles on this gateway."""
     if not isinstance(value, list):
         raise DiscussionValidationError("members must be a list")
     if not MIN_DISCUSSION_MEMBERS <= len(value) <= MAX_DISCUSSION_MEMBERS:

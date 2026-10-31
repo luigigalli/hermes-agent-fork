@@ -721,8 +721,14 @@ def test_incomplete_attachment_metadata_is_rejected():
 @pytest.mark.parametrize(
     ("members", "match"),
     [
-        (MEMBERS[:1], "between 2 and 6"),
-        (MEMBERS + MEMBERS + MEMBERS[:1], "between 2 and 6"),
+        (MEMBERS[:1], "between 2 and 16"),
+        # The length check fires before uniqueness, so duplicate profiles are
+        # fine here: the point is that a roster one seat over the fork cap
+        # (discussion.MAX_DISCUSSION_MEMBERS) is refused as a whole.
+        (
+            [MEMBERS[index % len(MEMBERS)] for index in range(discussion.MAX_DISCUSSION_MEMBERS + 1)],
+            "between 2 and 16",
+        ),
         (
             [MEMBERS[0], {**MEMBERS[1], "profile": "research"}],
             "profiles must be unique",
