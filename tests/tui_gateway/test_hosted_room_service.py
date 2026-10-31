@@ -454,6 +454,72 @@ def test_restart_republishes_terminal_task_before_admitting_more(tmp_path: Path)
     assert replayed == events
 
 
+def test_member_update_publishes_a_removed_members_outcome_and_keeps_the_room_schedulable(tmp_path: Path):
+    """Member updates must be replay-safe where rosters were immutable: while a task of the
+    removed member is running, the roster change still commits; the finished attempt publishes
+    through its retired seat, and the room schedules the next turn for its kept roster instead
+    of wedging on history the roster no longer names."""
+    db = tmp_path / "state.db"
+    service = HostedRoomService(_server(), db_path=db)
+    service.rpc = _FakeRPC()
+    service.runtime.rpc = service.rpc
+    service.local_profiles = lambda: ("default", "ops", "scout")
+    service.create_room(
+        room_id="room-1",
+        name="Release room",
+        members=[
+            {"member_id": "default", "profile": "default", "handle": "hermes"},
+            {"member_id": "ops", "profile": "ops", "handle": "ops"},
+        ],
+    )
+    _append_room_event(
+        db,
+        room_id="room-1",
+        event_id="user-1",
+        kind="message.user",
+        actor={"kind": "user", "id": "desktop"},
+        payload={"text": "@ops inspect the release", "thread_id": "thread-1"},
+    )
+    binding = service.bindings()[0]
+    service.prepare_room(binding)
+    task = driver.list_tasks(db, room_id="room-1", status="queued")[0]
+    lease = driver.acquire_lease(
+        db,
+        room_id="room-1",
+        gateway_id=binding.gateway_id,
+        authority_epoch=binding.authority_epoch,
+        process_generation="in-flight",
+        ttl_seconds=30,
+        clock=time.time,
+    )
+    attempt = driver.start_task(
+        db, task["identity"], lease, expected_cancel_generation=0, clock=time.time)
+
+    room = service.update_room_members(
+        room_id="room-1",
+        event_id="update-1",
+        members=[
+            {"member_id": "default", "profile": "default", "handle": "hermes"},
+            {"member_id": "scout", "profile": "scout", "handle": "scout"},
+        ],
+    )
+    assert [member["member_id"] for member in room["members"]] == ["default", "scout"]
+    # The running attempt was not touched by the roster change (only stop interrupts).
+    assert task["identity"].task_id == next(
+        candidate["identity"].task_id
+        for candidate in driver.list_tasks(db, room_id="room-1", status="running"))
+
+    driver.settle_task(
+        db, attempt, settlement_id="reply-1", status="settled", result={"text": "done"}, clock=time.time)
+    service.prepare_room(binding)
+
+    events = service._events("room-1")
+    assert sum(event["kind"] == "message.member" for event in events) == 1
+    assert sum(event["kind"] == "turn.settled" for event in events) == 1
+    queued = driver.list_tasks(db, room_id="room-1", status="queued")
+    assert queued[0]["payload"]["target_profile"] == "default"
+
+
 def test_policy_checkpoint_bounds_replay_after_completed_room_history(
     tmp_path: Path,
     monkeypatch,

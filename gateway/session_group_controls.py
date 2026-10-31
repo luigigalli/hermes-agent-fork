@@ -16,6 +16,7 @@ GROUP_METHODS = {
     'groups.state': 'session:read',
     'groups.log': 'session:read',
     'groups.create': 'session:control',
+    'groups.update_members': 'session:control',
     'groups.rename': 'session:control',
     'groups.disband': 'session:control',
     'groups.send': 'session:submit',
@@ -32,6 +33,7 @@ _FIELDS = {
     'groups.state': {'room_id', 'include_disbanded'},
     'groups.log': {'room_id', 'since_seq', 'limit', 'include_disbanded'},
     'groups.create': {'room_id', 'name', 'members'},
+    'groups.update_members': {'room_id', 'event_id', 'members'},
     'groups.rename': {'room_id', 'event_id', 'name'},
     'groups.disband': {'room_id', 'cancel_id'},
     'groups.send': {'room_id', 'event_id', 'payload'},
@@ -193,6 +195,37 @@ def _group(authority, actor, method, params, *, host_scope=False):
                 name=params.get('name'), members=normalized, authority_gateway_id=gateway_id,
                 admit=admit)}
 
+    def update_members():
+        from gateway.hosted_room_discussion import DiscussionValidationError, validate_roster
+        from gateway.session_hosted_members import member_roster, refuse_unseatable
+        # A rename for the seat list: the owner authorize already ran on the control path; the
+        # roster here is validated by the driver's rule against the seats THIS caller may seat.
+        try:
+            homes, refused = member_roster(authority, siblings=host_scope)
+            # A saved room keeps every seat it already holds (the same keep-alive rule the
+            # driver's saved-room roster projection uses), so only NEW seats must be seatable:
+            # a member whose profile stopped being served can still be kept, and can now be
+            # removed, instead of pinning every roster edit behind it.
+            admitted = rooms.room_state(db_path, room_id=params.get('room_id'), include_disbanded=True)
+            seated = {str(m.get('profile')) for m in admitted.get('members') or ()
+                      if isinstance(m, dict) and (m.get('target') or {}).get('kind', 'local') == 'local'}
+            fresh = [m for m in params.get('members') or ()
+                     if not (isinstance(m, dict) and str(m.get('profile')) in seated)]
+            refuse_unseatable(fresh, refused)
+            members = validate_roster(
+                params.get('members'), local_profiles=[*homes, *sorted(seated - set(homes))])
+            if service is not None:
+                return {'room': service.update_room_members(**params, admit=admit)}
+        except DiscussionValidationError as exc:
+            # Name the refused member; the bare code left Desktop and gateway.log silent (#139002).
+            raise RuntimeStoreError('invalid_params', field='members', detail=str(exc)) from exc
+        normalized = [{'member_id': m.member_id, 'profile': m.profile, 'handle': m.handle,
+                       'target': dict(m.target or {}),
+                       **({'display_name': m.display_name} if m.display_name else {})} for m in members]
+        return {'room': rooms.update_room_members(db_path, room_id=params.get('room_id'),
+                event_id=params.get('event_id'), members=normalized, authority_gateway_id=gateway_id,
+                admit=admit)}
+
     def disband():
         from gateway.hosted_room_driver import list_tasks
         state = rooms.room_state(db_path, room_id=params.get('room_id'), include_disbanded=True)
@@ -220,6 +253,7 @@ def _group(authority, actor, method, params, *, host_scope=False):
         'groups.capabilities': capabilities,
         'groups.list': listing,
         'groups.create': create,
+        'groups.update_members': update_members,
         'groups.state': state,
         'groups.log': lambda: rooms.read_events(db_path, **params),
         'groups.rename': lambda: {'room': rooms.rename_room(db_path, **params)},

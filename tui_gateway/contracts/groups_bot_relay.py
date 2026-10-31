@@ -198,6 +198,22 @@ method("groups.create", params=GroupsCreateParams, result=GroupsCreateResult,
        doc="Create a hosted room idempotently; authority is this gateway's stable install identity.")
 
 
+class GroupsUpdateMembersParams(RoomParams):
+    event_id: str
+    members: list[RoomMemberInput]
+    # Ignored: authority is always this gateway's install identity (a client cannot spoof it).
+    authority_gateway_id: str | None = None
+
+
+class GroupsUpdateMembersResult(Result):
+    room: Room
+
+
+method("groups.update_members", params=GroupsUpdateMembersParams, result=GroupsUpdateMembersResult,
+       doc="Replace one live hosted room's member roster atomically with its replay event; removed "
+           "seats keep validating the history they authored.")
+
+
 class GroupsStateParams(RoomParams):
     include_disbanded: bool | None = None
 

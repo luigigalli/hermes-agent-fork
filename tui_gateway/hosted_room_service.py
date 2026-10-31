@@ -423,9 +423,15 @@ class HostedRoomService:
                 "discussion_event_id": decision.discussion_event_id},
             authority_gateway_id=gateway_id, authority_epoch=epoch)
 
+    def _policy_room(self, room: Mapping[str, Any]) -> dict[str, Any]:
+        """The room value the discussion policy validates against: the current roster plus
+        every seat a member update retired, so committed history authored by a removed
+        member keeps validating while only current members resolve into new turns."""
+        return {**room, "retired_members": hosted_rooms.retired_room_seats(self.db_path, room_id=room["room_id"])}
+
     def prepare_room(self, binding: HostedRoomBinding) -> None:
         with self._policy_lock:
-            room = self._room(binding.room_id)
+            room = self._policy_room(self._room(binding.room_id))
             snapshot = self._policy_snapshot(room)  # sync() side effect feeds the publish below
             try:
                 changed = self._publish_terminal_tasks(room)
@@ -433,7 +439,7 @@ class HostedRoomService:
                 # Rebuild publication next poll; the settled task is never readmitted.
                 return
             if changed:
-                room = self._room(binding.room_id)
+                room = self._policy_room(self._room(binding.room_id))
                 snapshot = self._policy_snapshot(room)
             self.policy_checkpoint.compact_completed(room_id=binding.room_id)
             driver.prune_published_terminal_tasks(
@@ -478,6 +484,23 @@ class HostedRoomService:
         normalized = discussion.validate_roster(members, local_profiles=self.local_profiles())
         room = hosted_rooms.create_room(
             self.db_path, room_id=room_id, name=name,
+            members=[
+                {
+                    "member_id": member.member_id, "profile": member.profile,
+                    "handle": member.handle, "target": dict(member.target or {}),
+                    **({"display_name": member.display_name} if member.display_name else {})}
+                for member in normalized],
+            authority_gateway_id=hosted_rooms.local_authority_gateway_id(), admit=admit)
+        self.runtime.wakeup()
+        return room
+
+    def update_room_members(self, *, room_id: str, event_id: str, members: Any, admit: Any = None) -> dict[str, Any]:
+        """Replace one live room's roster. ``create_room`` owns the seatable set of a NEW room;
+        a saved room also keeps every seat it already holds (``room_profiles``), so an update can
+        keep a member whose profile stopped being served while adding/removing around it."""
+        normalized = discussion.validate_roster(members, local_profiles=self.room_profiles(self._room(room_id)))
+        room = hosted_rooms.update_room_members(
+            self.db_path, room_id=room_id, event_id=event_id,
             members=[
                 {
                     "member_id": member.member_id, "profile": member.profile,

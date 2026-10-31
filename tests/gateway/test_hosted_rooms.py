@@ -719,6 +719,135 @@ def test_disband_rejects_stale_authority(tmp_path):
     assert tombstone["event"]["authority_epoch"] == 2
 
 
+def _seed_roster(db, members, room_id="room-1"):
+    return rooms.create_room(
+        db, room_id=room_id, name="Release room", members=members,
+        authority_gateway_id="gateway-a", now=10)
+
+
+OPS = {"member_id": "ops", "profile": "ops", "handle": "ops"}
+SCOUT = {"member_id": "scout", "profile": "scout", "handle": "scout"}
+WRITER = {"member_id": "writer", "profile": "writer", "handle": "writer"}
+
+
+def _update(db, **kwargs):
+    kwargs.setdefault("authority_gateway_id", "gateway-a")
+    return rooms.update_room_members(db, **kwargs)
+
+
+def test_update_members_replaces_roster_and_logs_the_replay_event(tmp_path):
+    db = tmp_path / "state.db"
+    _seed_roster(db, [OPS, SCOUT])
+
+    updated = _update(db, room_id="room-1", event_id="update-1", now=30, members=[OPS, WRITER])
+
+    assert updated["idempotent"] is False
+    assert [member["member_id"] for member in updated["members"]] == ["ops", "writer"]
+    assert updated["event"]["kind"] == "room.members_updated"
+    assert updated["event"]["seq"] == 1
+    assert updated["event"]["payload"] == {"members": [OPS, WRITER]}
+    # The different set persists in the room row, across a reopen, and in the replay log.
+    assert [member["member_id"] for member in rooms.room_state(db, room_id="room-1")["members"]] == [
+        "ops", "writer"]
+    events = rooms.read_events(db, room_id="room-1")["events"]
+    assert events[-1]["kind"] == "room.members_updated"
+    # The removed seat is durably registered, so policy replay keeps its committed history.
+    assert rooms.retired_room_seats(db, room_id="room-1") == [SCOUT]
+
+
+def test_update_members_is_idempotent_by_event_id(tmp_path):
+    db = tmp_path / "state.db"
+    _seed_roster(db, [OPS, SCOUT])
+    first = _update(db, room_id="room-1", event_id="update-1", now=30, members=[OPS, WRITER])
+
+    replay = _update(db, room_id="room-1", event_id="update-1", now=40, members=[OPS, WRITER])
+
+    assert replay["idempotent"] is True
+    assert replay["members"] == first["members"]
+    assert replay["event"]["seq"] == first["event"]["seq"]
+    assert replay["event"]["idempotent"] is True
+    # Replaying the same id does not register the retired seat a second time.
+    assert rooms.retired_room_seats(db, room_id="room-1") == [SCOUT]
+    # ``create_room`` stays untouched: its idempotency answer compares against the room's
+    # CURRENT state, so a create with the CURRENT members still replays, while the
+    # pre-update roster alone never resurrects it (roster edits are update-path only).
+    assert rooms.create_room(
+        db, room_id="room-1", name="Release room", members=[OPS, WRITER],
+        authority_gateway_id="gateway-a")["idempotent"] is True
+    with pytest.raises(rooms.RoomConflictError):
+        rooms.create_room(
+            db, room_id="room-1", name="Release room", members=[OPS, SCOUT],
+            authority_gateway_id="gateway-a")
+
+
+def test_update_members_rejects_a_conflicting_event_id(tmp_path):
+    db = tmp_path / "state.db"
+    _seed_roster(db, [OPS, SCOUT])
+    _update(db, room_id="room-1", event_id="update-1", now=30, members=[OPS, WRITER])
+
+    with pytest.raises(rooms.EventConflictError, match="different immutable content"):
+        _update(db, room_id="room-1", event_id="update-1", now=40, members=[OPS, SCOUT])
+
+    rooms.rename_room(db, room_id="room-1", event_id="rename-1", name="Renamed", now=31)
+    with pytest.raises(rooms.EventConflictError, match="different immutable content"):
+        _update(db, room_id="room-1", event_id="rename-1", now=40, members=[OPS, SCOUT])
+
+
+def test_update_members_refuses_disbanded_and_missing_rooms(tmp_path):
+    db = tmp_path / "state.db"
+    _seed_roster(db, [OPS, SCOUT])
+    _disband(db, room_id="room-1", now=20)
+
+    with pytest.raises(rooms.RoomNotFoundError):
+        _update(db, room_id="room-1", event_id="update-1", now=30, members=[OPS, SCOUT])
+    with pytest.raises(rooms.RoomNotFoundError):
+        _update(db, room_id="room-missing", event_id="update-1", now=30, members=[OPS, SCOUT])
+
+
+def test_update_members_rejects_stale_authority(tmp_path):
+    db = tmp_path / "state.db"
+    _seed_roster(db, [OPS, SCOUT])
+    rooms.claim_authority(
+        db, room_id="room-1", expected_gateway_id="gateway-a", expected_epoch=1,
+        new_gateway_id="gateway-b", event_id="claim-b")
+
+    with pytest.raises(rooms.AuthorityConflictError, match="authority"):
+        _update(db, room_id="room-1", event_id="update-1", now=30, members=[OPS, WRITER])
+
+    updated = _update(
+        db, room_id="room-1", event_id="update-1", now=30, members=[OPS, WRITER],
+        authority_gateway_id="gateway-b")
+    assert updated["event"]["authority_epoch"] == 2
+
+
+def test_update_members_rejects_more_than_max_members(tmp_path):
+    db = tmp_path / "state.db"
+    _seed_roster(db, [OPS, SCOUT])
+    many = [
+        {"member_id": f"m-{index:03d}", "profile": f"m-{index:03d}", "handle": f"m-{index:03d}"}
+        for index in range(rooms.MAX_MEMBERS + 1)]
+
+    with pytest.raises(rooms.HostedRoomError, match="too many room members"):
+        _update(db, room_id="room-1", event_id="update-1", members=many)
+
+
+def test_retired_seats_must_return_with_the_same_seat_identity(tmp_path):
+    db = tmp_path / "state.db"
+    _seed_roster(db, [OPS, SCOUT])
+    _update(db, room_id="room-1", event_id="update-1", now=30, members=[OPS, WRITER])
+
+    # The same seat descriptor may return.
+    reseated = _update(db, room_id="room-1", event_id="update-2", now=40, members=[OPS, SCOUT])
+    assert [member["member_id"] for member in reseated["members"]] == ["ops", "scout"]
+    # The registry keeps every seat the room has ever retired (re-seating does not erase it).
+    assert rooms.retired_room_seats(db, room_id="room-1") == [SCOUT, WRITER]
+
+    # The same member id under a changed identity is refused: historical events
+    # behind that id would otherwise revalidate under the wrong descriptor.
+    with pytest.raises(rooms.HostedRoomError, match="changed seat identity"):
+        _update(db, room_id="room-1", event_id="update-3", now=50, members=[OPS, {**SCOUT, "handle": "renamed"}])
+
+
 def test_room_log_pages_are_bounded_by_serialized_event_bytes(tmp_path, monkeypatch):
     db = tmp_path / "state.db"
     _create(db)

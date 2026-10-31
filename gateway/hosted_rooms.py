@@ -14,7 +14,7 @@ import sqlite3
 from contextlib import closing
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from gateway.hosted_rooms_common import (
     DbPath, bounded_int, canonical_json, clock as _now, compact_json, connect, fenced_update as _fenced_update,
@@ -46,15 +46,16 @@ CONTROL_EVENT_BYTE_RESERVE = 1024 * 1024
 _JOURNAL_MODE_LOCK_RETRIES = 8
 
 _EVENT_KIND_RE = re.compile(r"^[a-z][a-z0-9_.-]*$")
-_CONTROL_EVENT_KINDS = frozenset({"authority.claimed", "authority.lost", "room.disbanded", "room.stop_requested"})
+_CONTROL_EVENT_KINDS = frozenset({
+    "authority.claimed", "authority.lost", "room.disbanded", "room.members_updated", "room.stop_requested"})
 _EVENT_KINDS_BY_ACTOR = {
     "user": frozenset({"message.user"}), "member": frozenset({"message.member"}),
     "gateway": frozenset({
         "member.unavailable", "room.activity", "room.stop_requested", "turn.deferred", "turn.reassigned",
         "turn.cancelled", "turn.failed", "turn.settled", "turn.started"}),
     "system": frozenset({
-        "authority.claimed", "authority.lost", "room.created", "room.disbanded", "room.members_changed", "room.renamed"
-    })}
+        "authority.claimed", "authority.lost", "room.created", "room.disbanded", "room.members_changed",
+        "room.members_updated", "room.renamed"})}
 _OPTIONAL_ACTOR_FIELDS = (
     ("display_name", MAX_ACTOR_LABEL_CHARS), ("profile", MAX_ACTOR_ID_CHARS), ("connection_id", MAX_ACTOR_ID_CHARS))
 _ACTOR_FIELDS = frozenset({"kind", "id", *(field for field, _ in _OPTIONAL_ACTOR_FIELDS)})
@@ -115,6 +116,14 @@ _SCHEMA_DDL = (
             room_id TEXT PRIMARY KEY,
             retired_at REAL NOT NULL
         )""",
+    """CREATE TABLE IF NOT EXISTS hosted_room_seats (
+            room_id TEXT NOT NULL,
+            member_id TEXT NOT NULL,
+            member_json TEXT NOT NULL,
+            removed_at REAL NOT NULL,
+            PRIMARY KEY (room_id, member_id),
+            FOREIGN KEY (room_id) REFERENCES hosted_rooms(room_id)
+        )""",
     """CREATE TABLE IF NOT EXISTS hosted_room_links (
             room_id TEXT NOT NULL,
             member_id TEXT NOT NULL,
@@ -150,7 +159,8 @@ _SCHEMA_DDL = (
 _REQUIRED_COLUMNS = tuple(
     (re.search(r"EXISTS (\w+)", ddl).group(1),
      frozenset(re.findall(r"^\s*(\w+) (?:TEXT|INTEGER|REAL)\b", ddl.split("(", 1)[1], re.MULTILINE))) for ddl in _SCHEMA_DDL)
-_REMOTE_RUN_SCHEMA_COLUMNS = _REQUIRED_COLUMNS[4][1]
+_REMOTE_RUN_SCHEMA_COLUMNS = next(
+    required for table, required in _REQUIRED_COLUMNS if table == "hosted_room_remote_runs")
 
 # --- SQL fragments (statement text must stay byte-stable after whitespace normalisation) ---
 _EVENT_COLUMNS = ("room_id, seq, event_id, kind, actor_json, authority_epoch, payload_json, created_at")
@@ -566,7 +576,7 @@ _DEPENDENT_TABLES = (
     "hosted_room_policy_transcript_state", "hosted_room_policy_transcript", "hosted_room_policy_publications",
     "hosted_room_policy_watermarks", "hosted_room_policy_events", "hosted_room_policy_threads",
     "hosted_room_policy_cursors", "hosted_room_driver_tasks", "hosted_room_driver_leases", "hosted_room_remote_runs",
-    "hosted_room_links", "hosted_room_peer_reservations", "hosted_room_events")
+    "hosted_room_links", "hosted_room_seats", "hosted_room_peer_reservations", "hosted_room_events")
 
 
 def _room_ids(conn: sqlite3.Connection, sql: str, params: tuple[Any, ...]) -> list[str]:
@@ -949,6 +959,119 @@ def rename_room(db_path: DbPath, *, room_id: Any, event_id: Any, name: Any, now:
                 WHERE room_id=?""", (name, seq + 1, event_bytes, now, room_id))
         conn.execute(_INSERT_EVENT, (
             room_id, seq, event_id, "room.renamed", actor_json, int(room["authority_epoch"]), payload_json, now))
+        updated = conn.execute(_SELECT_ROOM, (room_id,)).fetchone()
+        return {**_room_from_row(updated), "event": _event_from_row(_load_event(conn, room_id, event_id))}
+
+
+def _seat_identity(member: Mapping[str, Any]) -> tuple[str, str, str]:
+    """The immutable part of one member descriptor: profile, handle and its exact target."""
+    target = member.get("target")
+    if not (isinstance(target, Mapping) and target):
+        # An explicit local target is the normalization the roster validation applies to every
+        # seat anyway: a legacy row that simply omits it names the same seat.
+        profile = str(member.get("profile", ""))
+        target = {"kind": "local", "profile": profile}
+    return (
+        str(member.get("profile", "")), str(member.get("handle", "")),
+        _canonical_json(dict(target), label="member target", max_bytes=MAX_MEMBERS_JSON_BYTES))
+
+
+def _register_retired_seats_locked(
+    conn: sqlite3.Connection, room_id: str,
+    previous: Sequence[Mapping[str, Any]], current: Sequence[Mapping[str, Any]], now: float,
+) -> None:
+    """Durably register the seats this update removed, so the discussion policy keeps
+    validating the history they authored while only current members receive turns."""
+    current_ids = {str(member.get("member_id", "")).casefold() for member in current}
+    for member in previous:
+        member_id = str(member.get("member_id", ""))
+        if not member_id or member_id.casefold() in current_ids:
+            continue
+        conn.execute(
+            """INSERT INTO hosted_room_seats (room_id, member_id, member_json, removed_at)
+                    VALUES (?, ?, ?, ?)
+                ON CONFLICT(room_id, member_id) DO NOTHING""",
+            (room_id, member_id, _canonical_json(dict(member), label="member", max_bytes=MAX_MEMBERS_JSON_BYTES), now))
+
+
+def retired_room_seats(db_path: DbPath, *, room_id: Any) -> list[dict[str, Any]]:
+    """Full descriptors of every seat this room has retired, in stable member_id order."""
+    room_id = _room_id(room_id)
+    with closing(_read_connection(db_path)) as conn:
+        rows = conn.execute(
+            "SELECT member_json FROM hosted_room_seats WHERE room_id=? ORDER BY member_id", (room_id,)).fetchall()
+    return [json.loads(row["member_json"]) for row in rows]
+
+
+def update_room_members(
+    db_path: DbPath, *, room_id: Any, event_id: Any, members: Any, authority_gateway_id: Any,
+    now: float | None = None,
+    admit: Callable[[sqlite3.Connection], Any] | None = None,
+) -> dict[str, Any]:
+    """Replace a live room's member roster atomically with its replay event.
+
+    Same fencing contract as ``disband_room``/``rename_room``: one immediate transaction, the caller must
+    name the room's live authority gateway (a stale or foreign one fails closed), and a repeated
+    ``event_id`` replays the original rows while different content fails closed. ``create_room`` stays the
+    writer of an untouched roster: a room's roster is not re-created from here, only replaced.
+    ``admit(conn)`` runs first inside the write transaction (after payload validation), so a caller's
+    ownership check commits only together with this update.
+
+    Seats this update removes are registered in ``hosted_room_seats`` (a derived side table, written by
+    this one writer inside the same transaction) so the discussion policy keeps validating the committed
+    history they authored; a later re-seat must restore that exact profile/handle/target identity for the
+    same member id, otherwise historical events would revalidate under the wrong seat.
+
+    A running task of a removed member is NOT interrupted: its attempt completes in the member's own
+    session while the transport's membership check refuses only NEW submissions, and the room policy
+    still publishes the terminal outcome through the retired seat. Only room stop (or disband)
+    interrupts a live attempt, as before. Peer routes are not touched here either.
+    """
+    room_id = _room_id(room_id)
+    event_id = _event_id(event_id)
+    normalized_members, members_json = _validate_members(members)
+    authority_gateway_id = _actor_id(authority_gateway_id, "authority_gateway_id")
+    now = _now(now)
+    actor_json = _system_actor_json("room-control")
+    payload_json = _payload_json({"members": normalized_members})
+    with _transaction(db_path, immediate=True) as conn:
+        if admit is not None:
+            admit(conn)
+        room = _room_row(conn, _SELECT_ROOM_WITH_BYTES, (room_id,), room_id)
+        if room["disbanded_at"] is not None:
+            raise RoomNotFoundError("hosted room not found")
+        existing = _load_event(conn, room_id, event_id)
+        if existing is not None:
+            if existing["kind"] != "room.members_updated" or existing["payload_json"] != payload_json:
+                raise EventConflictError("event_id already exists with different immutable content")
+            return {**_room_from_row(room, idempotent=True), "event": _event_from_row(existing, idempotent=True)}
+        _require_authority(room, authority_gateway_id, int(room["authority_epoch"]), "hosted room authority changed")
+        # Turn identities bake their seat's digest, so any member id the room has ever seated
+        # (currently seated or retired) must return with, or keep, its original descriptor.
+        previous = json.loads(room["members_json"])
+        seats = {
+            str(member.get("member_id", "")).casefold(): _seat_identity(member)
+            for member in previous if member.get("member_id")}
+        seats.update({
+            str(row["member_id"]).casefold(): _seat_identity(json.loads(row["member_json"]))
+            for row in conn.execute(
+                "SELECT member_id, member_json FROM hosted_room_seats WHERE room_id=?", (room_id,)).fetchall()})
+        for index, member in enumerate(normalized_members):
+            member_id = str(member.get("member_id", "")).casefold()
+            if member_id and member_id in seats and seats[member_id] != _seat_identity(member):
+                raise HostedRoomError(
+                    f"member {index} ({member['member_id']}) cannot return with a changed seat identity")
+        seq = int(room["next_seq"])
+        event_bytes = _prepare_event(
+            conn, room, event_id, "room.members_updated", actor_json, payload_json, allow_control=True)
+        # Membership updates the room row before inserting its event (order is load-bearing).
+        conn.execute("""UPDATE hosted_rooms
+                SET members_json=?, next_seq=?, event_bytes=event_bytes+?, revision=revision+1, updated_at=?
+                WHERE room_id=?""", (members_json, seq + 1, event_bytes, now, room_id))
+        conn.execute(_INSERT_EVENT, (
+            room_id, seq, event_id, "room.members_updated", actor_json, int(room["authority_epoch"]),
+            payload_json, now))
+        _register_retired_seats_locked(conn, room_id, previous, normalized_members, now)
         updated = conn.execute(_SELECT_ROOM, (room_id,)).fetchone()
         return {**_room_from_row(updated), "event": _event_from_row(_load_event(conn, room_id, event_id))}
 

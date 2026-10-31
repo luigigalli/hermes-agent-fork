@@ -98,12 +98,19 @@ class DiscussionMember:
 
 @dataclass(frozen=True)
 class DiscussionRoom:
-    """Validated policy projection of one active hosted room."""
+    """Validated policy projection of one active hosted room.
+
+    ``retired`` holds seats an explicit member update removed from ``members``: they never
+    receive or resolve into new turns, but their committed history (their own messages, the
+    terminal events of turns it seated) keeps validating through them instead of wedging
+    policy replay behind a seat the roster no longer names.
+    """
     room_id: str
     name: str
     members: tuple[DiscussionMember, ...]
     gateway_id: str
     authority_epoch: int
+    retired: tuple[DiscussionMember, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -295,6 +302,33 @@ def validate_roster(value: Any, *, local_profiles: Iterable[str]) -> tuple[Discu
     return tuple(members)
 
 
+def _retired_seats(value: Any, members: Sequence[DiscussionMember], local_profiles: set[str]) -> tuple[DiscussionMember, ...]:
+    """Project the retired seats a room value carries (``_register_retired_seats_locked``).
+
+    Their shape stays the strict member contract. A retired LOCAL profile may have stopped
+    being served since it was seated, so only that row's own profile is admitted for it.
+    A retired id that returns under the current roster must be the same seat, or the
+    committed history behind that id would revalidate under the wrong descriptor.
+    """
+    if value is None:
+        return ()
+    if not isinstance(value, (list, tuple)):
+        raise DiscussionValidationError("retired members must be a list")
+    retired: list[DiscussionMember] = []
+    for index, raw in enumerate(value):
+        row_profile = raw.get("profile") if isinstance(raw, Mapping) else None
+        member = _validate_member(raw, index, local_profiles | ({row_profile} if isinstance(row_profile, str) else set()))
+        retired.append(member)
+        if (same_ids := [m for m in members if m.member_id.casefold() == member.member_id.casefold()]) and any(
+                _seat_lineage(seat) != _seat_lineage(member) for seat in same_ids):
+            raise DiscussionValidationError(f"member '{member.member_id}' cannot return with a changed seat identity")
+    return tuple(sorted(retired, key=lambda member: member.member_id.casefold()))
+
+
+def _seat_lineage(member: DiscussionMember) -> str:
+    return f"{member.profile.lower()}\0{member.handle.casefold()}\0{compact_json(member.target or {}, ensure_ascii=False)}"
+
+
 def validate_room(value: Any, *, local_profiles: Iterable[str]) -> DiscussionRoom:
     """Project a hosted-room row into the strict same-gateway policy shape."""
     if not isinstance(value, Mapping):
@@ -309,7 +343,10 @@ def validate_room(value: Any, *, local_profiles: Iterable[str]) -> DiscussionRoo
     gateway_id = _identifier(value.get("authority_gateway_id"), label="authority_gateway_id")
     authority_epoch = _positive_int(value.get("authority_epoch"), label="authority_epoch")
     members = validate_roster(value.get("members"), local_profiles=local_profiles)
-    return DiscussionRoom(room_id, name, members, gateway_id, authority_epoch)
+    known_profiles = {_identifier(profile, label="local profile") for profile in local_profiles}
+    return DiscussionRoom(
+        room_id, name, members, gateway_id, authority_epoch,
+        retired=_retired_seats(value.get("retired_members"), members, known_profiles))
 
 
 def is_pass_text(value: Any) -> bool:
@@ -362,7 +399,8 @@ def _require_gateway_actor(actor: Mapping[str, Any], room: DiscussionRoom, messa
 
 def _member_by_id(room: DiscussionRoom, member_id: Any) -> DiscussionMember:
     normalized = _identifier(member_id, label="member_id")
-    if (member := next((m for m in room.members if m.member_id == normalized), None)) is None:
+    if (member := next((m for m in room.members if m.member_id == normalized), None)) is None and (
+            member := next((m for m in room.retired if m.member_id.casefold() == normalized.casefold()), None)) is None:
         raise DiscussionValidationError(f"unknown Discussion member '{normalized}'")
     return member
 
@@ -764,9 +802,11 @@ def reconstruct_task_plan(
     if identity.room_id != room.room_id or identity.thread_id != discussion.payload["thread_id"]:
         raise DiscussionReconstructionError("task identity does not match its room thread")
     profile, target_member_id = payload.get("target_profile"), payload.get("target_member_id")
+    # The seat a task was planned against may have left the roster since; a retired seat still
+    # reconstructs and publishes its own outcome (see plan_publication).
     member = next((
-        m for m in room.members
-        if m.profile == profile and (target_member_id is None or m.member_id == target_member_id)), None)
+        m for m in (*room.members, *room.retired)
+        if m.profile == profile and (target_member_id is None or m.member_id.casefold() == str(target_member_id).casefold())), None)
     if member is None or _member_digest(member) != match.group("member"):
         raise DiscussionReconstructionError("task target member does not match turn_id")
     if not isinstance(prompt := payload.get("prompt"), str) or not prompt.strip():
@@ -869,9 +909,12 @@ def plan_publication(
     """
     room = validate_room(room_value, local_profiles=local_profiles)
     validated = _validated_events(events, room=room)
+    # A seat the roster later retired keeps authorizing the outcome it produced while seated:
+    # its task completes and publishes; only new turns are refused (see DiscussionRoom.retired).
     for failed, message in (
         (task.identity.room_id != room.room_id, "task belongs to a different room"),
-        (task.member not in room.members, "task member is not in the frozen roster"),
+        (task.member not in room.members and task.member not in room.retired,
+         "task member is not in the frozen roster"),
         (status not in _TERMINAL_EFFECTS, "invalid terminal publication status")):
         if failed:
             raise DiscussionValidationError(message)

@@ -280,3 +280,48 @@ def test_profiles_list_cache_sees_changes_inside_one_mtime_tick(tmp_path, monkey
     assert g._discovered_profile_meta('writer', meta) == {'display_name': 'BBBB'}
     meta.unlink()
     assert g._discovered_profile_meta('writer', meta) == {}
+
+
+def test_groups_update_members_writes_and_replays_the_roster(tmp_path, monkeypatch):
+    from gateway import hosted_rooms as rooms
+    from gateway.session_group_controls import _group
+    from hermes_state_runtime import RuntimeStoreError
+
+    home = tmp_path / 'state'
+    helper = home / 'profiles' / 'helper'
+    helper.mkdir(parents=True)
+    (helper / 'config.yaml').write_text('model:\n  default: m\n')
+    (home / 'profile.yaml').write_text('display_name: Fixture\n')
+    monkeypatch.setenv('HERMES_HOME', str(home))
+    monkeypatch.setenv('HOME', str(tmp_path / 'user'))
+    (home / 'config.yaml').write_text(json.dumps(
+        {'hosted_rooms': {'profiles': {'helper': str(helper.resolve())}}}))
+    db_path = home / 'state.db'
+    default = {'member_id': 'default', 'profile': 'default', 'handle': 'default'}
+    other = {'member_id': 'ghost', 'profile': 'ghost', 'handle': 'ghost'}
+    with SessionDB(db_path) as db:
+        gateway_id = rooms.local_authority_gateway_id()
+        rooms.create_room(
+            db_path, room_id='room-1', name='Room', members=[default, {'member_id': 'helper', 'profile': 'helper', 'handle': 'helper'}],
+            authority_gateway_id=gateway_id, now=10)
+        authority = SimpleNamespace(profile_id=str(home), instance_id='owner', db=db, events={}, sessions={})
+
+        updated = _group(authority, SimpleNamespace(subject='me'), 'groups.update_members', {
+            'room_id': 'room-1', 'event_id': 'update-1',
+            'members': [default, {'member_id': 'writer', 'profile': 'helper', 'handle': 'helper'}]})
+        members = updated['room']['members']
+        assert [m['member_id'] for m in members] == ['default', 'writer']
+        assert updated['room']['latest_seq'] == updated['room']['event']['seq']
+        log = _group(authority, SimpleNamespace(subject='me'), 'groups.log', {'room_id': 'room-1'})
+        assert log['events'][-1]['kind'] == 'room.members_updated'
+        replay = _group(authority, SimpleNamespace(subject='me'), 'groups.update_members', {
+            'room_id': 'room-1', 'event_id': 'update-1',
+            'members': [default, {'member_id': 'writer', 'profile': 'helper', 'handle': 'helper'}]})
+        assert replay['room']['idempotent'] is True
+
+        # A profile this gateway cannot seat is refused by the driver's own roster rule.
+        with pytest.raises(RuntimeStoreError):
+            _group(authority, SimpleNamespace(subject='me'), 'groups.update_members', {
+                'room_id': 'room-1', 'event_id': 'update-2',
+                'members': [default, {'member_id': 'writer', 'profile': 'helper', 'handle': 'helper'},
+                            other]})

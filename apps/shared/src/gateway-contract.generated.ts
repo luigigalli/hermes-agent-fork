@@ -1576,6 +1576,16 @@ export interface RoomMemberInput {
 export interface GroupsCreateResult {
   room: Room
 }
+export interface GroupsUpdateMembersParams {
+  profile?: string | null
+  room_id: string
+  event_id: string
+  members: RoomMemberInput[]
+  authority_gateway_id?: string | null
+}
+export interface GroupsUpdateMembersResult {
+  room: Room
+}
 export interface GroupsStateParams {
   profile?: string | null
   room_id: string
@@ -6139,6 +6149,8 @@ export interface RpcMethods {
   'groups.state': { params: GroupsStateParams; result: GroupsStateResult }
   /** Durably cancel queued or running work for one hosted room. */
   'groups.stop': { params: GroupsStopParams; result: GroupsStopResult }
+  /** Replace one live hosted room's member roster atomically with its replay event; removed seats keep validating the history they authored. */
+  'groups.update_members': { params: GroupsUpdateMembersParams; result: GroupsUpdateMembersResult }
   /** Fail a not-yet-claimed handoff (client poll timeout); CAS against the watcher. */
   'handoff.fail': { params: HandoffFailParams; result: HandoffFailResult }
   /** Queue a handoff to a messaging platform's home channel; the gateway watcher claims it. */
@@ -6576,6 +6588,7 @@ export const RPC_METHODS = [
   'groups.send',
   'groups.state',
   'groups.stop',
+  'groups.update_members',
   'handoff.fail',
   'handoff.request',
   'handoff.state',

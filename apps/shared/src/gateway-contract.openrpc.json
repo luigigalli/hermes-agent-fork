@@ -1447,6 +1447,24 @@
       }
     },
     {
+      "name": "groups.update_members",
+      "summary": "Replace one live hosted room's member roster atomically with its replay event; removed seats keep validating the history they authored.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/GroupsUpdateMembersParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/GroupsUpdateMembersResult"
+        }
+      }
+    },
+    {
       "name": "handoff.fail",
       "summary": "Fail a not-yet-claimed handoff (client poll timeout); CAS against the watcher.",
       "params": [
@@ -20509,6 +20527,70 @@
           "cancelled"
         ],
         "title": "GroupsStopResult",
+        "type": "object"
+      },
+      "GroupsUpdateMembersParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/RoomMemberInput"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "authority_gateway_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Authority Gateway Id"
+          }
+        },
+        "required": [
+          "room_id",
+          "event_id",
+          "members"
+        ],
+        "title": "GroupsUpdateMembersParams",
+        "type": "object"
+      },
+      "GroupsUpdateMembersResult": {
+        "additionalProperties": false,
+        "properties": {
+          "room": {
+            "$ref": "#/components/schemas/Room"
+          }
+        },
+        "required": [
+          "room"
+        ],
+        "title": "GroupsUpdateMembersResult",
         "type": "object"
       },
       "HandoffFailParams": {
