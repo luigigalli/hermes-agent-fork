@@ -1,3 +1,4 @@
+import type * as HermesSdk from '@hermes/plugin-sdk'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 const host = vi.hoisted(() => ({
@@ -6,7 +7,15 @@ const host = vi.hoisted(() => ({
   state: { connectionId: { get: vi.fn() }, profile: { get: vi.fn() } }
 }))
 
-vi.mock('@hermes/plugin-sdk', async () => ({ host, randomUuid: (await import('@hermes/shared')).randomUuid }))
+vi.mock('@hermes/plugin-sdk', async importOriginal => {
+  const sdk = await importOriginal<typeof HermesSdk>()
+
+  return {
+    ...sdk,
+    host,
+    randomUuid: (await import('@hermes/shared')).randomUuid
+  }
+})
 
 import {
   actCanonicalGroup,
