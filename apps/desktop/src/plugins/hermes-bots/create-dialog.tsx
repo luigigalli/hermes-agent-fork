@@ -1281,7 +1281,9 @@ async function revalidateGroupCreationMode(
     throw new Error(unavailableMessage)
   }
 
-  const freshMode = groupExecutionMode(await canonicalGroupRequest<unknown>(route, 'groups.capabilities'))
+  // Explicit deadline: the gate must fail closed (visible error, creating.current
+  // released) rather than wedge the first click on a dial that never answers.
+  const freshMode = groupExecutionMode(await canonicalGroupRequest<unknown>(route, 'groups.capabilities', {}, 8000))
 
   if (!sourceCurrent() || freshMode !== mode) {
     throw new Error(unavailableMessage)

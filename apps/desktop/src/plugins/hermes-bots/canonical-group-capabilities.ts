@@ -108,9 +108,22 @@ export function useGroupCapability(active: boolean) {
       }
     }
 
-    void canonicalGroupRequest<unknown>(route, 'groups.capabilities').then(
+    void canonicalGroupRequest<unknown>(route, 'groups.capabilities', {}, 8000).then(
       result => settle(result, false),
-      () => settle(null, true)
+      error => {
+        // A rejected probe must never read as muteness: `checking` has no text
+        // (the dialog only explains `unavailable`), so wedge-class rejections
+        // (stalled dial, incompatible gateway) surface through this notify
+        // with their cause, and settle() falls to the visible outage state.
+        host.notify({
+          kind: 'error',
+          message:
+            error instanceof Error && error.message
+              ? error.message
+              : String(error || 'groups.capabilities probe failed')
+        })
+        settle(null, true)
+      }
     )
 
     return () => {
