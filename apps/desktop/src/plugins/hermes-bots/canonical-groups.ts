@@ -1,5 +1,6 @@
 import { host, randomUuid } from '@hermes/plugin-sdk'
 
+import { GROUP_CHAT_MAX_MEMBERS } from './group-chat'
 import type { GroupMember } from './types'
 
 export interface CanonicalGroupRoute {
@@ -142,6 +143,66 @@ export async function createCanonicalGroup(
   })
 
   return { binding: { ...route, roomId: room.room_id }, room }
+}
+
+/** The exact roster mapping `groups.create` (and now member updates) send: same
+ *  authority-connection rule, unique profiles, non-reserved handles and the
+ *  local-target shape the driver's roster validation accepts. */
+function canonicalGroupRoster(route: CanonicalGroupRoute, members: GroupMember[]) {
+  const profiles = new Set<string>()
+  const handles = new Set(['all', 'everyone'])
+
+  return members.map(member => {
+    const connectionId = member.route?.connectionId ?? member.connectionId
+
+    if (
+      (connectionId !== undefined && connectionId !== route.connectionId) ||
+      (member.connectionId !== undefined && member.connectionId !== route.connectionId) ||
+      (connectionId === undefined && member.remoteSource)
+    ) {
+      throw new Error('Group members must belong to the same authority connection')
+    }
+
+    const profile = member.route?.targetProfile ?? member.targetProfile ?? member.name
+    const handle = member.handle ?? profile
+
+    if (!profile.trim() || !handle.trim() || profiles.has(profile.toLowerCase()) || handles.has(handle.toLowerCase())) {
+      throw new Error('Group members need unique profiles and non-reserved handles')
+    }
+
+    profiles.add(profile.toLowerCase())
+    handles.add(handle.toLowerCase())
+
+    return {
+      member_id: profile, profile, handle,
+      target: { kind: 'local', profile },
+      ...(member.display_name ? { display_name: member.display_name } : {})
+    }
+  })
+}
+
+/** Replace one live canonical room's seat list. The fork's picker canon counts
+ *  seats on GROUP_CHAT_MAX_MEMBERS; the gateway's own roster rule stays the
+ *  server-side enforcement and every removed seat keeps its committed history. */
+export async function updateCanonicalGroupMembers(
+  binding: CanonicalGroupBinding,
+  members: GroupMember[]
+): Promise<CanonicalRoom> {
+  requireRoute(binding)
+
+  if (members.length < 2 || members.length > GROUP_CHAT_MAX_MEMBERS) {
+    throw new Error(`A canonical group needs between 2 and ${GROUP_CHAT_MAX_MEMBERS} members`)
+  }
+
+  const roster = canonicalGroupRoster(binding, members)
+
+  const { room } = await canonicalGroupRequest<{ room: CanonicalRoom }>(binding, 'groups.update_members', {
+    room_id: binding.roomId,
+    event_id: randomUuid(),
+    members: roster
+  })
+
+  return room
 }
 
 export async function actCanonicalGroup(
