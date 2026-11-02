@@ -46,13 +46,11 @@ function ScopedSkillCatalog({
 }: SkillCatalogProps) {
   const { t } = useI18n()
   const h = t.skills.hub
-
   // "Try …" nudges from the user's own skills: search reads categories, not just names.
   const searchHints = useMemo(
     () => (skills.length ? skillSearchTerms(skills).map(term => t.common.tryHint(term)) : undefined),
     [skills, t]
   )
-
   const mounted = useRef(true)
   const pending = useRef(new Set<string>())
   const [installing, setInstalling] = useState<ReadonlySet<string>>(new Set())
@@ -117,7 +115,7 @@ function ScopedSkillCatalog({
       }))
     ).map(entry => {
       const skill = skillsByName.get(entry.name)!
-      const installed = { ...entry, id: `installed:${skill.name}`, installIdentifier: null }
+      const installed = { ...entry, id: `installed:${skill.name}`, installIdentifier: null, locked: !!skill.locked }
       skillsById.set(installed.id, skill)
       installedByName.set(skill.name, installed)
 

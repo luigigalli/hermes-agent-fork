@@ -1,3 +1,5 @@
+import { randomUuid } from '@hermes/plugin-sdk'
+
 import type { CanonicalGroupBinding } from './canonical-groups'
 
 const STORAGE_KEY = 'hermes.desktop.canonicalGroupSends.v1'
@@ -111,7 +113,7 @@ export async function prepareCanonicalGroupSend(
     return existing
   }
 
-  const eventId = crypto.randomUUID()
+  const eventId = randomUuid()
 
   const entry: PreparedCanonicalGroupSend = JSON.parse(
     JSON.stringify({

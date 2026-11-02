@@ -1,18 +1,26 @@
-import { atom, Button, host, useValue } from '@hermes/plugin-sdk'
+import { atom, Button, host, randomUuid, useValue } from '@hermes/plugin-sdk'
 import { useEffect, useState } from 'react'
 
 import { useCanonicalGroupLabels } from './canonical-group-labels'
-import { captureCanonicalGroupRoute, discoverCanonicalGroups } from './canonical-groups'
+import { CanonicalGroupRow } from './canonical-group-row'
+import { canonicalGroupRequest, captureCanonicalGroupRoute, discoverCanonicalGroups } from './canonical-groups'
 import type { CanonicalGroupBinding, CanonicalGroupRoute, CanonicalRoom } from './canonical-groups'
+import { closeGroupChatMainTab } from './group-panes'
 
 export const $canonicalGroupBindings = atom<Record<string, CanonicalGroupBinding>>({})
+// Bumped when a room leaves outside the list's own Refresh, so the sidebar re-reads `groups.list`.
+const $canonicalGroupListRevision = atom(0)
+
+/** Drop a disbanded room's key and every alias to it, then re-read the sidebar list. */
+export function forgetCanonicalGroup({ connectionId, profile, roomId }: CanonicalGroupBinding): void {
+  $canonicalGroupBindings.set(Object.fromEntries(Object.entries($canonicalGroupBindings.get()).filter(([, binding]) =>
+    binding.connectionId !== connectionId || binding.profile !== profile || binding.roomId !== roomId)))
+  $canonicalGroupListRevision.set($canonicalGroupListRevision.get() + 1)
+}
 
 export function registerCanonicalGroup(route: CanonicalGroupRoute, room: CanonicalRoom): string {
   const key = `canonical:${encodeURIComponent(route.connectionId)}:${encodeURIComponent(route.profile)}:${room.room_id}`
-  $canonicalGroupBindings.set({
-    ...$canonicalGroupBindings.get(),
-    [key]: { ...route, roomId: room.room_id, roomName: room.name }
-  })
+  $canonicalGroupBindings.set({ ...$canonicalGroupBindings.get(), [key]: { ...route, roomId: room.room_id, roomName: room.name } })
 
   return key
 }
@@ -27,10 +35,7 @@ export function registerCanonicalGroup(route: CanonicalGroupRoute, room: Canonic
 export type CanonicalGroupOrigin = 'key' | 'name'
 
 /** The route `group` names when it is a key: null for a name, whatever its shape. */
-export function canonicalGroupKeyRoute(
-  group: string,
-  origin: CanonicalGroupOrigin
-): ReturnType<typeof parseCanonicalGroupKey> {
+export function canonicalGroupKeyRoute(group: string, origin: CanonicalGroupOrigin): ReturnType<typeof parseCanonicalGroupKey> {
   return origin === 'name' ? null : parseCanonicalGroupKey(group)
 }
 
@@ -39,9 +44,7 @@ export function canonicalGroupKeyRoute(
 export function parseCanonicalGroupKey(key: string): (CanonicalGroupRoute & { roomId: string }) | null {
   const match = /^canonical:([^:]*):([^:]*):(.+)$/.exec(key)
 
-  if (!match) {
-    return null
-  }
+  if (!match) {return null}
 
   try {
     return { connectionId: decodeURIComponent(match[1]), profile: decodeURIComponent(match[2]), roomId: match[3] }
@@ -99,22 +102,47 @@ export function publishCanonicalGroup(
 ): void {
   const key = registerCanonicalGroup(resolved.authority, resolved.room)
 
-  if (origin === 'key' && key === group) {
-    return
-  }
-
+  if (origin === 'key' && key === group) {return}
   const binding = { ...resolved.authority, roomId: resolved.room.room_id, roomName: resolved.room.name }
   const alias = canonicalGroupKeyRoute(group, origin) ? group : canonicalGroupAliasKey(route, group)
   $canonicalGroupBindings.set({ ...$canonicalGroupBindings.get(), [alias]: binding })
+}
+
+/** Every view string showing this room: its `canonical:` keys, and the name a
+ *  name-opened tab and selection are recorded under (from its route-scoped alias). */
+function canonicalGroupViews({ connectionId, profile, roomId }: CanonicalGroupBinding): Set<string> {
+  const aliasPrefix = canonicalGroupAliasKey({ connectionId, profile }, '')
+  const views = new Set<string>()
+
+  for (const [key, binding] of Object.entries($canonicalGroupBindings.get())) {
+    if (binding.connectionId === connectionId && binding.profile === profile && binding.roomId === roomId) {
+      views.add(key.startsWith(aliasPrefix) ? key.slice(aliasPrefix.length) : key)
+    }
+  }
+
+  return views
+}
+
+interface ListedRoom { binding: CanonicalGroupBinding; key: string; memberCount: number; name: string }
+
+/** Disband on the room's own gateway, then retire it everywhere this window shows it.
+ *  A refusal rejects before anything is dropped, so the row stays and the confirm shows why. */
+async function disbandListedRoom(room: ListedRoom, doneMessage: string): Promise<void> {
+  await canonicalGroupRequest(room.binding, 'groups.disband', { room_id: room.binding.roomId, cancel_id: randomUuid() })
+  // Collect before forgetting: the bindings are the only record of which views alias this room.
+  canonicalGroupViews(room.binding).add(room.key).forEach(closeGroupChatMainTab)
+  forgetCanonicalGroup(room.binding)
+  host.notify({ kind: 'success', message: doneMessage })
 }
 
 export function CanonicalGroupList({ onOpen }: { onOpen: (key: string, origin: CanonicalGroupOrigin) => void }) {
   const labels = useCanonicalGroupLabels()
   const connectionId = useValue(host.state.connectionId)
   const profile = useValue(host.state.profile)
-  const [rooms, setRooms] = useState<Array<{ key: string; name: string }>>([])
+  const [rooms, setRooms] = useState<ListedRoom[]>([])
   const [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
+  const revision = useValue($canonicalGroupListRevision)
   useEffect(() => {
     let cancelled = false
     setRooms([])
@@ -124,30 +152,22 @@ export function CanonicalGroupList({ onOpen }: { onOpen: (key: string, origin: C
       const result = await discoverCanonicalGroups(route)
 
       if (!cancelled) {
-        setRooms(result.rooms.map(room => ({ key: registerCanonicalGroup(route, room), name: room.name })))
+        setRooms(result.rooms.map(room => ({
+          binding: { ...route, roomId: room.room_id, roomName: room.name },
+          key: registerCanonicalGroup(route, room),
+          memberCount: room.members?.length ?? 0,
+          name: room.name
+        })))
       }
-    })().catch(e => {
-      if (!cancelled) {
-        setError(e instanceof Error ? e.message : String(e))
-      }
-    })
+    })().catch(e => { if (!cancelled) {setError(e instanceof Error ? e.message : String(e))} })
 
-    return () => {
-      cancelled = true
-    }
-  }, [connectionId, profile, refresh])
+    return () => { cancelled = true }
+  }, [connectionId, profile, refresh, revision])
 
-  return (
-    <div className="grid gap-1 px-2">
-      <Button onClick={() => setRefresh(value => value + 1)} variant="ghost">
-        {labels.refreshGroups}
-      </Button>
-      {error && <p role="alert">{error}</p>}
-      {rooms.map(room => (
-        <Button key={room.key} onClick={() => onOpen(room.key, 'key')} variant="ghost">
-          {room.name}
-        </Button>
-      ))}
-    </div>
-  )
+  return <div className="grid gap-1 px-2">
+    <Button onClick={() => setRefresh(value => value + 1)} variant="ghost">{labels.refreshGroups}</Button>
+    {error && <p role="alert">{error}</p>}
+    {rooms.map(room => <CanonicalGroupRow key={room.key} memberCount={room.memberCount} name={room.name}
+      onDelete={() => disbandListedRoom(room, labels.disbanded(room.name))} onOpen={() => onOpen(room.key, 'key')} />)}
+  </div>
 }

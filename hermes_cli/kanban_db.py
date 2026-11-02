@@ -31,6 +31,7 @@ from typing import Any, Iterable, Optional
 
 from hermes_cli.kanban_workflow import DEFAULT_STATUSES as VALID_STATUSES
 from toolsets import get_toolset_names
+from utils import unlink_files_older_than
 
 _log = logging.getLogger(__name__)
 
@@ -497,43 +498,6 @@ def board_exists(board: Optional[str] = None) -> bool:
     return _dir_holds_board(board_dir(slug))
 
 
-
-
-def _explicit_board_slug(board: Optional[str]) -> Optional[str]:
-    """Explicit caller intent: a direct ``board=`` argument, else the scoped
-    ``--board`` context (CLI ``hermes kanban --board``, dashboard plugin_api);
-    ``None`` when the caller expressed neither."""
-    if board is not None:
-        return _normalize_board_slug(board)
-    # A caller-scoped board (CLI `hermes kanban --board B ...`, dashboard
-    # plugin_api) is explicit intent just like a direct board= argument —
-    # without this a worker-pinned HERMES_KANBAN_DB silently outranks --board
-    # (os-reviewer P1 on PR#107195 / t_11c4afd8).
-    ctx = (_CURRENT_BOARD_OVERRIDE.get() or "").strip()
-    if ctx:
-        try:
-            return _normalize_board_slug(ctx)
-        except ValueError:
-            return None
-    return None
-
-
-def _explicit_board_intent_pinned() -> bool:
-    """Whether an explicit ``board=`` (or scoped ``--board``) must still resolve
-    through the ``HERMES_KANBAN_DB``-style env pins instead of its own board dir.
-
-    True for machine flows wrapped in :func:`pin_first_board_resolution` and
-    for every execution the dispatcher fences: its own workers (they carry
-    ``HERMES_KANBAN_TASK``) and delegated children / descendants (the
-    ``HERMES_DELEGATED_CHILD_CONTEXT`` marker). The pins ARE the "workers
-    physically cannot see other boards" isolation (5ec6baa), and
-    ``agent.delegation_context.kanban_path_is_fenced`` checks the pinned path /
-    fenced root — an explicit board that resolved elsewhere would also escape
-    that fence."""
-    if _PIN_FIRST_BOARD_RESOLUTION.get():
-        return True
-    from agent.delegation_context import explicit_board_intent_is_pinned
-    return explicit_board_intent_is_pinned()
 
 
 def _explicit_board_slug(board: Optional[str]) -> Optional[str]:
@@ -2389,7 +2353,7 @@ def release_stale_claims(
         "WHERE status = 'running' AND claim_expires IS NOT NULL "
         "  AND claim_expires < ?", (now,),
     ).fetchall()
-    from hermes_cli.kanban_owner_recovery import owner_reclaim_blocked, owner_reclaim_blocked_after_kill
+    from hermes_cli.kanban_owner_recovery import owner_reclaim_blocked, owner_reclaim_blocked_after_kill, reclaim_error
     for row in stale:
         if owner_reclaim_blocked(conn, row["id"]):
             continue
@@ -2419,7 +2383,7 @@ def release_stale_claims(
             # changes neither claim_lock nor worker_pid, so the CAS below cannot see it.
             if owner_reclaim_blocked_after_kill(conn, row["id"], signalled=bool(termination.get("termination_attempted"))):
                 continue
-            retry_status = _retry_status_for_run(conn, row["id"])
+            retry_status, error = _retry_status_for_run(conn, row["id"]), reclaim_error(conn, row["id"], row["claim_lock"])
             cur = conn.execute(
                 "UPDATE tasks SET status = ?, claim_lock = NULL, "
                 "claim_expires = NULL, worker_pid = NULL, worker_started_at = NULL "
@@ -2433,7 +2397,7 @@ def release_stale_claims(
                 continue
             run_id = _record_reclaim(
                 conn, row["id"], termination,
-                error=f"stale_lock={row['claim_lock']}",
+                error=error,
                 payload={
                     "stale_lock": row["claim_lock"],
                     "worker_pid": _opt_int(row["worker_pid"]),
@@ -2450,7 +2414,7 @@ def release_stale_claims(
         # the run ended without a verdict, so it counts toward the breaker and a
         # trip flips the task to ``blocked`` + ``gave_up`` on top of ``reclaimed``.
         _record_task_failure(
-            conn, row["id"], f"stale_lock={row['claim_lock']}",
+            conn, row["id"], error,
             outcome="reclaimed", failure_limit=failure_limit,
             release_claim=False, end_run=False,
             event_payload_extra={"worker_pid": _opt_int(row["worker_pid"]), "retry_status": retry_status},
@@ -3244,10 +3208,6 @@ def block_task(
         )
         _append_event(conn, task_id, event_kind, payload, run_id=run_id)
         blocked_task = get_task(conn, task_id)
-        if kind == "dependency":
-            # Historical ordering: the dependency lane fires inside the txn.
-            _fire_task_hook("kanban_task_blocked", blocked_task, task_id, run_id, reason=reason)
-            return True
     _fire_task_hook("kanban_task_blocked", blocked_task, task_id, run_id, reason=reason)
     return True
 
@@ -4075,14 +4035,7 @@ def gc_worker_logs(*, older_than_seconds: int = 30 * 24 * 3600, board: Optional[
     log_dir = worker_logs_dir(board=board)
     if not log_dir.exists():
         return 0
-    cutoff = time.time() - older_than_seconds
-    removed = 0
-    for p in log_dir.iterdir():
-        with contextlib.suppress(OSError):
-            if p.is_file() and p.stat().st_mtime < cutoff:
-                p.unlink()
-                removed += 1
-    return removed
+    return unlink_files_older_than(log_dir, "*", older_than_seconds)
 
 
 # --- Worker log accessor ---
@@ -4134,7 +4087,7 @@ def list_profiles_on_disk() -> list[str]:
         names.add("default")
     if profiles_dir.is_dir():
         try:
-            names.update(e.name for e in profiles_dir.iterdir() if e.is_dir() and (e / "config.yaml").is_file())
+            names.update(e.name for e in profiles_dir.iterdir() if e.is_dir() and (e / "config.yaml").is_file())  # config-reader: ok — profile directory discovery marker
         except OSError:
             pass
     return sorted(names)

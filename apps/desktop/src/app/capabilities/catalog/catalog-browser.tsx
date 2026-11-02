@@ -15,6 +15,7 @@ import { DetailColumn, ListColumn, MasterDetail } from '../../master-detail'
 import { PanelEmpty } from '../../overlays/panel'
 import { CapabilitySearch } from '../ui/capability-search'
 
+import { CatalogAddButton } from './catalog-add-button'
 import { CatalogAlert } from './catalog-alert'
 import { CatalogCard, type CatalogCardVariant } from './catalog-card'
 import { type CatalogEntry, type CatalogKind, useCatalog } from './catalog-data'
@@ -22,7 +23,6 @@ import { CatalogDetail } from './catalog-detail'
 import { CatalogDetailDialog } from './catalog-detail-dialog'
 import { CatalogDiscovery } from './catalog-discovery'
 import { CatalogFilterBar } from './catalog-filter-bar'
-import { CatalogInstallSwitch } from './catalog-install-switch'
 import { CatalogListRow } from './catalog-list-row'
 import { CATALOG_POINTER_ENABLED, trackCatalogPointer } from './catalog-pointer'
 import {
@@ -33,9 +33,7 @@ import {
   catalogSources,
   catalogTags,
   filterCatalog,
-  relatedEntries,
-  sortCatalog
-} from './catalog-query'
+  relatedEntries, sortCatalog } from './catalog-query'
 import { $catalogCardView } from './store'
 import { useCatalogFilters } from './use-catalog-filters'
 
@@ -115,6 +113,7 @@ function CatalogEntryInstall({
   installedPending,
   installing,
   kind,
+  labeled,
   onInstall
 }: {
   entry: CatalogEntry
@@ -122,13 +121,15 @@ function CatalogEntryInstall({
   installedPending: boolean
   installing: boolean
   kind: CatalogKind
+  labeled?: boolean
   onInstall: () => void
 }) {
   return (
-    <CatalogInstallSwitch
+    <CatalogAddButton
       disabled={installedPending || installed || (kind === 'skills' && !entry.installIdentifier)}
       installed={installed}
       installing={installing}
+      labeled={labeled}
       name={entry.name}
       onInstall={onInstall}
     />
@@ -265,11 +266,7 @@ const detailRelated = (entries: CatalogEntry[], selected: CatalogEntry | undefin
  *  stay their own shelves, Community and multi-category picks keep their
  *  category shelves. One category is a drill-in, so it stays a flat grid. */
 const isDiscoverView = (facets: CatalogFacets, query: string, kind: CatalogKind) =>
-  (kind === 'plugins' || !facets.sources.length) &&
-  facets.categories.length !== 1 &&
-  !facets.tags.length &&
-  !query &&
-  !facets.installedOnly
+  (kind === 'plugins' || !facets.sources.length) && facets.categories.length !== 1 && !facets.tags.length && !query && !facets.installedOnly
 
 function CatalogLoadState({ error, onRetry }: { error: Error | null; onRetry: () => void }) {
   const { t } = useI18n()
@@ -393,8 +390,9 @@ export const CatalogBrowser = memo(function CatalogBrowser({
     setDetailOpen(true)
   }
 
-  // Installed entries get the owner's on/off switch; the rest install one-way.
-  const entryAction = (entry: CatalogEntry) =>
+  // Installed entries get the owner's switch + ⋯ menu; the rest get a one-way +.
+  // Hero cards and the detail have room to spell it out: "+ Install".
+  const entryAction = (entry: CatalogEntry, labeled?: boolean) =>
     renderInstalledAction?.(entry) || (
       <CatalogEntryInstall
         entry={entry}
@@ -402,6 +400,7 @@ export const CatalogBrowser = memo(function CatalogBrowser({
         installedPending={Boolean(installedPending)}
         installing={isInstalling?.(entry) ?? false}
         kind={kind}
+        labeled={labeled}
         onInstall={() => {
           if (kind === 'plugins') {
             setDetailOpen(false)
@@ -412,15 +411,10 @@ export const CatalogBrowser = memo(function CatalogBrowser({
       />
     )
 
-  const card = (
-    entry: CatalogEntry,
-    accentIndex: number,
-    variant: CatalogCardVariant = 'default',
-    placement?: React.CSSProperties
-  ) => (
+  const card = (entry: CatalogEntry, accentIndex: number, variant: CatalogCardVariant = 'default', placement?: React.CSSProperties) => (
     <CatalogCard
       accentIndex={accentIndex}
-      action={entryAction(entry)}
+      action={entryAction(entry, variant === 'hero')}
       entry={entry}
       key={entry.id}
       onCategory={filters.chooseCategory}
@@ -434,7 +428,7 @@ export const CatalogBrowser = memo(function CatalogBrowser({
 
   const details = selected ? (
     <CatalogDetail
-      action={entryAction(selected)}
+      action={entryAction(selected, true)}
       dialog={cardView}
       entry={selected}
       kind={kind}
@@ -503,22 +497,9 @@ export const CatalogBrowser = memo(function CatalogBrowser({
                     key={`${filterKey}:${sort}:${deferredQuery}:${facets.installedOnly}`}
                   >
                     {discover ? (
-                      <CatalogDiscovery
-                        actions={actions}
-                        byCategory={facets.categories.length > 1}
-                        card={card}
-                        entries={filtered}
-                        kind={kind}
-                        narrowed={facets.sources.length > 0 || facets.categories.length > 1}
-                        onCategory={filters.chooseCategory}
-                      />
+                      <CatalogDiscovery actions={actions} byCategory={facets.categories.length > 1} card={card} entries={filtered} kind={kind} narrowed={facets.sources.length > 0 || facets.categories.length > 1} onCategory={filters.chooseCategory} />
                     ) : (
-                      <CatalogFilteredCards
-                        card={card}
-                        entries={filtered.slice(0, limit)}
-                        more={filtered.length > limit}
-                        onMore={() => setLimit(value => value + PAGE_SIZE)}
-                      />
+                      <CatalogFilteredCards card={card} entries={filtered.slice(0, limit)} more={filtered.length > limit} onMore={() => setLimit(value => value + PAGE_SIZE)} />
                     )}
                   </div>
                 </div>
@@ -552,9 +533,7 @@ export const CatalogBrowser = memo(function CatalogBrowser({
                         selected={entry.id === selected.id}
                       />
                     ))}
-                    {filtered.length > limit && (
-                      <CatalogMoreButton onMore={() => setLimit(value => value + PAGE_SIZE)} />
-                    )}
+                    {filtered.length > limit && <CatalogMoreButton onMore={() => setLimit(value => value + PAGE_SIZE)} />}
                   </ListColumn>
                   <DetailColumn footer={c.snapshotHint}>
                     <div className="sm:hidden">

@@ -1,3 +1,4 @@
+import { randomUuid } from '@hermes/shared'
 import { useStore } from '@nanostores/react'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 
@@ -18,6 +19,7 @@ import {
   migrateQueuedPrompts,
   promoteQueuedPrompt,
   type QueuedPromptEntry,
+  queuedSubmissionId,
   removeQueuedPrompt,
   resolveQueuedPromptTransport,
   serverOwnsComposerQueue,
@@ -92,13 +94,11 @@ interface UseComposerQueueArgs {
 }
 
 /** Text kept in the composer, followed by the draft a queued-row edit interrupted (when it differs). */
-const withPreEditDraft = (text: string, draft: string) =>
-  draft.trim() && draft !== text ? `${text}\n\n${draft}` : text
+const withPreEditDraft = (text: string, draft: string) => (draft.trim() && draft !== text ? `${text}\n\n${draft}` : text)
 
 /** The owner answered with a named refusal: nothing was replaced. Anything else (a lost reply, a
  *  dropped connection) leaves the outcome unknown. */
-const isOwnerRefusal = (error: unknown) =>
-  typeof (error as { data?: { reason?: unknown } } | null)?.data?.reason === 'string'
+const isOwnerRefusal = (error: unknown) => typeof (error as { data?: { reason?: unknown } } | null)?.data?.reason === 'string'
 
 /**
  * The composer's queue engine — everything about queued turns: the per-session
@@ -322,9 +322,7 @@ export function useComposerQueue({
           const retained = unconfirmedRef.current
 
           const submissionId =
-            retained?.admissionId === entryId && retained.edited === edited
-              ? retained.submissionId
-              : crypto.randomUUID()
+            retained?.admissionId === entryId && retained.edited === edited ? retained.submissionId : randomUuid()
 
           serverSaveRef.current = save
 
@@ -337,8 +335,7 @@ export function useComposerQueue({
             // Cancelled, or cancelled and reopened: that later edit is not this save's to settle.
             const open = queueEditRef.current === save.edit
             // A known outcome spends the identity; an unknown one keeps it for the open edit's retry.
-            unconfirmedRef.current =
-              outcome === 'unconfirmed' && open ? { admissionId: entryId, edited, submissionId } : null
+            unconfirmedRef.current = outcome === 'unconfirmed' && open ? { admissionId: entryId, edited, submissionId } : null
 
             if (!open) {
               return
@@ -405,7 +402,9 @@ export function useComposerQueue({
     return true
   }
 
-  const queueCurrentDraft = useCallback(() => {
+  // `submissionId` names the restored send this draft retries: the admission (or the local entry that
+  // drains under its id) keeps it, so the owner never runs the interrupted original a second time.
+  const queueCurrentDraft = useCallback((submissionId?: string) => {
     const text = draftRef.current
 
     if (!activeQueueSessionKey || (!text.trim() && attachments.length === 0)) {
@@ -444,7 +443,8 @@ export function useComposerQueue({
           ...(frozen.displayText ? { displayText: frozen.displayText } : {}),
           fromQueue: true,
           sessionId: sessionId ?? null,
-          storedSessionId: activeQueueSessionKey
+          storedSessionId: activeQueueSessionKey,
+          ...(submissionId ? { submission_id: submissionId } : {})
         })
       )
         .then(accepted => {
@@ -464,6 +464,7 @@ export function useComposerQueue({
 
     if (
       !enqueueQueuedPrompt(activeQueueSessionKey, {
+        ...(submissionId ? { id: submissionId } : {}),
         text: frozen.text,
         attachments,
         ...(frozen.displayText ? { displayText: frozen.displayText } : {}),
@@ -525,7 +526,7 @@ export function useComposerQueue({
               ...(resolved.displayText ? { displayText: resolved.displayText } : {}),
               ...(entry.displayKind ? { displayKind: entry.displayKind } : {}),
               fromQueue: true,
-              submission_id: entry.id,
+              submission_id: queuedSubmissionId(entry),
               sessionId: drainRuntimeSessionId,
               storedSessionId: drainQueueSessionKey
             })

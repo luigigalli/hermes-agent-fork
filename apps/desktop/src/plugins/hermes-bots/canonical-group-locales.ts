@@ -34,6 +34,10 @@ export interface CanonicalGroupMessages {
   newThreadPlaceholder: string
   replyInThread: string
   threadUntitled: string
+  openGroup: string
+  memberWorking: string
+  memberQueued: string
+  groupWorking: string
   /** Read-only archive pane (projection of the room's past, no writes). */
   archiveTitle: string
   archiveEmpty: string
@@ -92,7 +96,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: 'Legacy Desktop room',
     manageMembers: 'Manage members',
     pickMembersHint: 'Pick 2–{n} members for this group. The group and its history stay as they are.',
-    saveMembers: 'Save members'
+    saveMembers: 'Save members',
+    openGroup: 'Open Group Chat',
+    memberWorking: 'Working',
+    memberQueued: 'Queued',
+    groupWorking: 'The group is working…'
   },
   ja: {
     roomStopped: 'グループが停止しました',
@@ -138,7 +146,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: 'レガシーデスクトップルーム',
     manageMembers: 'メンバーを管理',
     pickMembersHint: 'このグループのメンバーを 2–{n} 人選びます。グループと履歴はそのまま残ります。',
-    saveMembers: 'メンバーを保存'
+    saveMembers: 'メンバーを保存',
+    openGroup: 'グループチャットを開く',
+    memberWorking: '作業中',
+    memberQueued: '待機中',
+    groupWorking: 'グループが作業中です…'
   },
   zh: {
     roomStopped: '群组已停止',
@@ -183,7 +195,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: '旧版桌面房间',
     manageMembers: '管理成员',
     pickMembersHint: '为该群组选择 2–{n} 位成员。群组及其历史保持不变。',
-    saveMembers: '保存成员'
+    saveMembers: '保存成员',
+    openGroup: '打开群聊',
+    memberWorking: '工作中',
+    memberQueued: '排队中',
+    groupWorking: '群组正在处理…'
   },
   'zh-hant': {
     roomStopped: '群組已停止',
@@ -228,7 +244,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: '舊版桌面房間',
     manageMembers: '管理成員',
     pickMembersHint: '為此群組選擇 2–{n} 位成員。群組與其歷史保持不變。',
-    saveMembers: '儲存成員'
+    saveMembers: '儲存成員',
+    openGroup: '開啟群組聊天',
+    memberWorking: '工作中',
+    memberQueued: '排隊中',
+    groupWorking: '群組正在處理…'
   },
   ar: {
     roomStopped: 'أُوقفت المجموعة',
@@ -273,7 +293,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: 'غرفة سطح مكتب قديمة',
     manageMembers: 'إدارة الأعضاء',
     pickMembersHint: 'اختر من 2 إلى {n} عضواً لهذه المجموعة. تبقى المجموعة وسجلها كما هما.',
-    saveMembers: 'حفظ الأعضاء'
+    saveMembers: 'حفظ الأعضاء',
+    openGroup: 'فتح الدردشة الجماعية',
+    memberWorking: 'يعمل',
+    memberQueued: 'في الانتظار',
+    groupWorking: 'المجموعة تعمل…'
   },
   ru: {
     roomStopped: 'Группа остановлена',
@@ -322,7 +346,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: 'Устаревшая комната рабочего стола',
     manageMembers: 'Управлять участниками',
     pickMembersHint: 'Выберите от 2 до {n} участников этой группы. Группа и её история остаются без изменений.',
-    saveMembers: 'Сохранить участников'
+    saveMembers: 'Сохранить участников',
+    openGroup: 'Открыть групповой чат',
+    memberWorking: 'Работает',
+    memberQueued: 'В очереди',
+    groupWorking: 'Группа работает…'
   },
   fr: {
     roomStopped: 'Groupe arrêté',
@@ -369,7 +397,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: 'Salon de bureau legacy',
     manageMembers: 'Gérer les membres',
     pickMembersHint: 'Choisissez de 2 à {n} membres pour ce groupe. Le groupe et son historique restent inchangés.',
-    saveMembers: 'Enregistrer les membres'
+    saveMembers: 'Enregistrer les membres',
+    openGroup: 'Ouvrir la discussion de groupe',
+    memberWorking: 'En cours',
+    memberQueued: 'En attente',
+    groupWorking: 'Le groupe travaille…'
   },
   de: {
     roomStopped: 'Gruppe angehalten',
@@ -418,7 +450,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: 'Legacy-Desktop-Raum',
     manageMembers: 'Mitglieder verwalten',
     pickMembersHint: 'Wählen Sie 2–{n} Mitglieder für diese Gruppe. Gruppe und Verlauf bleiben unverändert.',
-    saveMembers: 'Mitglieder speichern'
+    saveMembers: 'Mitglieder speichern',
+    openGroup: 'Gruppenchat öffnen',
+    memberWorking: 'Arbeitet',
+    memberQueued: 'In der Warteschlange',
+    groupWorking: 'Die Gruppe arbeitet…'
   },
   es: {
     roomStopped: 'Grupo detenido',
@@ -464,7 +500,11 @@ export const CANONICAL_GROUP_LOCALES = {
     roomKindLegacy: 'Sala de escritorio heredada',
     manageMembers: 'Gestionar miembros',
     pickMembersHint: 'Elige entre 2 y {n} miembros para este grupo. El grupo y su historial permanecen igual.',
-    saveMembers: 'Guardar miembros'
+    saveMembers: 'Guardar miembros',
+    openGroup: 'Abrir chat de grupo',
+    memberWorking: 'Trabajando',
+    memberQueued: 'En cola',
+    groupWorking: 'El grupo está trabajando…'
   }
 } satisfies Record<string, CanonicalGroupMessages>
 
@@ -520,5 +560,9 @@ export const CANONICAL_GROUP_LOCALE_ITALIAN = {
   roomKindLegacy: 'Room desktop legacy',
   manageMembers: 'Gestisci membri',
   pickMembersHint: "Scegli da 2 a {n} membri per questo gruppo. Il gruppo e la sua storia restano com'erano.",
-  saveMembers: 'Salva membri'
+  saveMembers: 'Salva membri',
+  openGroup: 'Apri chat di gruppo',
+  memberWorking: 'Al lavoro',
+  memberQueued: 'In coda',
+  groupWorking: 'Il gruppo sta lavorando…'
 } satisfies CanonicalGroupMessages

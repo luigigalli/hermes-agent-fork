@@ -24,7 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  gatewayActivationEpoch,
   host,
   Input,
   queryClient,
@@ -32,6 +31,7 @@ import {
   RowButton,
   Tip,
   ToggleRow,
+  useGatewayActivationEpoch,
   useI18n,
   useValue
 } from '@hermes/plugin-sdk'
@@ -42,7 +42,6 @@ import { avatarColor, botAppearance, BotFace } from './avatar'
 import { isBackfilledFacePng } from './avatar-image'
 import { groupCreationSource, groupExecutionMode } from './canonical-group-capabilities'
 import type { GroupExecutionMode } from './canonical-group-capabilities'
-import { CanonicalGroupLegacyHistory } from './canonical-group-legacy-history'
 import type { CanonicalGroupOrigin } from './canonical-group-registry'
 import {
   $canonicalGroupBindings,
@@ -117,7 +116,6 @@ import {
 } from './group-panes'
 import type { GroupComposerDraft, GroupDraftSetter } from './group-panes'
 import { groupReplyMentionTag, sendToGroupChat, stopGroupThread } from './group-rounds'
-import { $groupThreadReads, deriveGroupThreads, groupThreadUnread, markGroupThreadRead } from './group-thread-pane'
 import { clearGroupClarify, renameGroupClarify } from './group-turns'
 import { botsText, useBots } from './i18n'
 import { displayName, slugifyProfileName } from './labels'
@@ -591,17 +589,10 @@ export function GroupChatWorkspace(props: GroupChatWorkspaceProps) {
   const bindings = useValue($canonicalGroupBindings)
   const connectionId = useValue(host.state.connectionId)
   const profile = useValue(host.state.profile)
+  const binding = canonicalGroupBindingFor(bindings, { connectionId: connectionId ?? '', profile }, props.group, props.origin ?? 'name')
 
-  const binding = canonicalGroupBindingFor(
-    bindings,
-    { connectionId: connectionId ?? '', profile },
-    props.group,
-    props.origin ?? 'name'
-  )
-
-  if (binding) {
-    return <CanonicalGroupWorkspace binding={binding} onBack={props.onBack} visible={props.visible} />
-  }
+  // The in-panel fallback has no tab to close, so leaving deselects the room, as in the legacy view.
+  if (binding) {return <CanonicalGroupWorkspace binding={binding} onBack={props.onBack ?? (() => $groupChatWorkspace.set(null))} visible={props.visible} />}
 
   return <GroupExecutionGate {...props} />
 }
@@ -609,13 +600,10 @@ export function GroupChatWorkspace(props: GroupChatWorkspaceProps) {
 function GroupExecutionGate(props: GroupChatWorkspaceProps) {
   const b = useBots()
   const { t } = useI18n()
-  // The room's durable local record, for the read-only archive pane (the projection
-  // contract: reading only — the gate never writes the store, t_97e2e058).
-  const archiveRooms: Record<string, GroupChatRoom> = useValue($groupChats)
   const connectionId = useValue(host.state.connectionId)
   const profile = useValue(host.state.profile)
   const gateway = useValue(host.state.gateway)
-  const activationEpoch = gatewayActivationEpoch()
+  const activationEpoch = useGatewayActivationEpoch()
   const source = JSON.stringify([connectionId, profile, gateway, activationEpoch])
   const [capability, setCapability] = useState<{ source: string; mode: GroupExecutionMode } | null>(null)
   const mode = capability?.source === source ? capability.mode : 'checking'
@@ -627,10 +615,7 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
   const [lookupAttempt, setLookupAttempt] = useState(0)
   const lookupStatus = lookup?.source === source ? lookup.status : 'pending'
   useEffect(() => {
-    if (mode !== 'canonical') {
-      return
-    }
-
+    if (mode !== 'canonical') {return}
     let cancelled = false
     setLookup({ source, status: 'pending' })
     setError('')
@@ -638,15 +623,9 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
     const origin = props.origin ?? 'name'
     void resolveCanonicalGroup(route, props.group, origin)
       .then(resolved => {
-        if (cancelled) {
-          return
-        }
+        if (cancelled) {return}
 
-        if (resolved) {
-          publishCanonicalGroup(route, props.group, resolved, origin)
-        } else {
-          setLookup({ source, status: 'missing' })
-        }
+        if (resolved) {publishCanonicalGroup(route, props.group, resolved, origin)} else {setLookup({ source, status: 'missing' })}
       })
       .catch(e => {
         if (!cancelled) {
@@ -655,9 +634,7 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
         }
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [mode, source, props.group, props.origin, lookupAttempt, connectionId, profile])
   useEffect(() => {
     let cancelled = false
@@ -671,11 +648,7 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
     }
 
     void canonicalGroupRequest<unknown>({ connectionId: connectionId ?? '', profile }, 'groups.capabilities')
-      .then(result => {
-        if (!cancelled) {
-          setCapability({ source, mode: groupExecutionMode(result) })
-        }
-      })
+      .then(result => { if (!cancelled) {setCapability({ source, mode: groupExecutionMode(result) })} })
       .catch(e => {
         if (!cancelled) {
           setCapability({ source, mode: 'unavailable' })
@@ -683,84 +656,46 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
         }
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [connectionId, profile, gateway, source])
 
-  if (mode === 'legacy') {
-    return <LegacyGroupChatWorkspace {...props} />
-  }
+  if (mode === 'legacy') {return <LegacyGroupChatWorkspace {...props} />}
 
   // A `canonical:` key names an existing room; it never seeds a new one.
-  const canCreate =
-    mode === 'canonical' &&
-    lookupStatus === 'missing' &&
-    canonicalGroupKeyRoute(props.group, props.origin ?? 'name') === null
+  const canCreate = mode === 'canonical' && lookupStatus === 'missing' && canonicalGroupKeyRoute(props.group, props.origin ?? 'name') === null
 
-  const message =
-    mode !== 'canonical'
-      ? mode === 'unavailable'
-        ? b.canonical.driverUnavailable
-        : 'Checking group driver…'
-      : lookupStatus === 'pending'
-        ? t.gatewayGroupOpen.opening
-        : lookupStatus === 'failed'
-          ? t.gatewayGroupOpen.lookupFailed
-          : canCreate
-            ? b.legacyGate.legacyRoom
-            : t.gatewayGroupOpen.missing
+  const message = mode !== 'canonical'
+    ? mode === 'unavailable' ? b.canonical.driverUnavailable : 'Checking group driver…'
+    : lookupStatus === 'pending' ? t.gatewayGroupOpen.opening
+      : lookupStatus === 'failed' ? t.gatewayGroupOpen.lookupFailed
+        : canCreate ? 'This is a legacy Desktop room. Start a gateway-owned group with these members; the old history stays here and is not replayed.'
+          : t.gatewayGroupOpen.missing
 
-  return (
-    <div className="grid gap-3 p-3">
-      <div className="flex items-center gap-2">
-        <h2 className="min-w-0 truncate text-sm font-medium">{props.group}</h2>
-        <span className="shrink-0 rounded-full border border-(--ui-stroke-secondary) px-1.5 text-[0.6rem] text-(--ui-text-tertiary)">
-          {b.canonical.roomKindLegacy}
-        </span>
-      </div>
-      <p>{message}</p>
-      {!canonicalGroupKeyRoute(props.group, props.origin ?? 'name') && (
-        <CanonicalGroupLegacyHistory room={archiveRooms[props.group]} showWhenEmpty />
-      )}
-      {error && <p role="alert">{error}</p>}
-      {mode === 'canonical' && lookupStatus !== 'pending' && !canCreate && (
-        <Button onClick={() => setLookupAttempt(value => value + 1)} variant="secondary">
-          {t.common.retry}
-        </Button>
-      )}
-      <Button
-        disabled={!canCreate || busy}
-        onClick={() => {
-          const route = { connectionId: connectionId ?? '', profile }
+  return <div className="grid gap-3 p-3">
+    <h2>{props.group}</h2>
+    <p>{message}</p>
+    {error && <p role="alert">{error}</p>}
+    {mode === 'canonical' && lookupStatus !== 'pending' && !canCreate &&
+      <Button onClick={() => setLookupAttempt(value => value + 1)} variant="secondary">{t.common.retry}</Button>}
+    <Button disabled={!canCreate || busy} onClick={() => {
+      const route = { connectionId: connectionId ?? '', profile }
 
-          const sourceCurrent = groupCreationSource(route, activationEpoch)
+      const sourceCurrent = groupCreationSource(route, activationEpoch)
 
-          if (!canCreate || !sourceCurrent()) {
-            setError(b.canonical.driverUnavailable)
+      if (!canCreate || !sourceCurrent()) {
+        setError(b.canonical.driverUnavailable)
 
-            return
-          }
+        return
+      }
 
-          setBusy(true)
-          void createCanonicalGroup(route, props.group, props.members)
-            .then(({ room }) => {
-              if (sourceCurrent()) {
-                openGroupChat(registerCanonicalGroup(route, room), 'key')
-              }
-            })
-            .catch(e => {
-              if (sourceCurrent()) {
-                setError(String(e))
-              }
-            })
-            .finally(() => setBusy(false))
-        }}
-      >
-        {b.legacyGate.start}
-      </Button>
-    </div>
-  )
+      setBusy(true)
+      void createCanonicalGroup(route, props.group, props.members)
+        .then(({ room }) => {
+          if (sourceCurrent()) {openGroupChat(registerCanonicalGroup(route, room), 'key')}
+        })
+        .catch(e => { if (sourceCurrent()) {setError(String(e))} }).finally(() => setBusy(false))
+    }}>Start gateway group</Button>
+  </div>
 }
 
 function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: GroupChatWorkspaceProps) {
@@ -1174,29 +1109,6 @@ function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: Gr
   const summaryActivity =
     !room.running && unresolvedFailures.size ? [...unresolvedFailures.values()].at(-1)! : latestActivity
 
-  // Thread pane (Merk patch, additive): the open-thread list ordered by last
-  // activity, with unread badges — makes the room's parallel topics VISIBLE
-  // without ever hiding timeline content (arrival-order invariant kept).
-  const [threadsOpen, setThreadsOpen] = useState(false)
-  const threadReads = useValue($groupThreadReads)
-  const activeThreadId = replyThread || null
-
-  const threads = useMemo(
-    () => deriveGroupThreads(room.log || [], activeThreadId || undefined),
-    [room.log, activeThreadId]
-  )
-
-  const activeThreadIdRef = activeThreadId || 'legacy'
-
-  const threadRows = threads.map(thread => {
-    const entries = (room.log || []).filter(entry => (entry.thread || 'legacy') === thread.id)
-    const unread = groupThreadUnread(threadReads[group]?.[thread.id], entries)
-
-    return { thread, unread }
-  })
-
-  const unreadTotal = threadRows.reduce((sum, row) => sum + row.unread, 0)
-
   // #94570 shell rewired onto the real primitive (#91868/#94569): the button
   // must stop the ROUND, not just spray per-member interrupts — without the
   // epoch bump + holds the loop marched on to the next member. Thread scope:
@@ -1271,73 +1183,6 @@ function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: Gr
           ) : (
             <div className="px-0.5 pb-0.5 text-[0.625rem] text-(--ui-text-quaternary)">{b.group.noActivityYet}</div>
           )}
-        </div>
-      ) : null}
-    </div>
-  )
-
-  // Thread pane (Merk patch): collapsed by default like Activity. The header
-  // row shows the open-thread count and the total unread badge; the expanded
-  // list orders threads newest-activity-first, each row shows head text,
-  // reply count and unread. Clicking a row OPENS that thread's reply box
-  // (setReplyThread) and marks it read — additive, nothing in the timeline
-  // is folded or reordered.
-  const threadsPanel = (
-    <div className="border-b border-(--ui-stroke-secondary)">
-      <div className="flex items-center gap-1">
-        <RowButton
-          aria-controls={`group-threads:${group}`}
-          aria-expanded={threadsOpen}
-          className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-left text-[0.7rem] text-(--ui-text-quaternary) transition-colors hover:text-foreground"
-          onClick={() => setThreadsOpen(prev => !prev)}
-          title={threadsOpen ? b.group.hideThreads : b.group.showThreads}
-          type="button"
-        >
-          <Codicon className="shrink-0 text-[0.65rem]" name={threadsOpen ? 'chevron-down' : 'chevron-right'} />
-          <span className="truncate">{threadsOpen ? b.group.hideThreads : b.group.showThreads}</span>
-          {unreadTotal > 0 ? (
-            <span className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white">
-              {unreadTotal}
-            </span>
-          ) : null}
-          <span className="shrink-0 text-[0.625rem] text-(--ui-text-quaternary)">{threadRows.length}</span>
-        </RowButton>
-      </div>
-      {threadsOpen ? (
-        <div aria-label={b.group.showThreads} className="grid gap-0.5 px-2.5 pb-1.5" id={`group-threads:${group}`}>
-          {threadRows.map(({ thread, unread }) => (
-            <button
-              className={cn(
-                'flex w-full items-center gap-2 rounded-md border px-2 py-1 text-left text-xs transition-colors',
-                thread.isActive
-                  ? 'border-(--ui-accent) text-foreground'
-                  : 'border-(--ui-stroke-secondary) text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover)'
-              )}
-              key={`threadrow:${thread.id}`}
-              onClick={() => {
-                setReplyThread(thread.id === 'legacy' ? null : thread.id)
-                markGroupThreadRead(group, thread.id, Date.now())
-              }}
-              title={b.group.openThread}
-              type="button"
-            >
-              <Codicon
-                className="shrink-0 text-[0.65rem]"
-                name={thread.id === 'legacy' ? 'comment-discussion' : 'git-pull-request'}
-              />
-              <span className="min-w-0 flex-1 truncate">
-                {(thread.head || thread.lastText || '').replace(/\s+/g, ' ').slice(0, 70) || '(thread)'}
-              </span>
-              <span className="shrink-0 text-[0.6rem] text-(--ui-text-quaternary)">
-                {thread.count} · {new Date(thread.lastAt).toLocaleTimeString()}
-              </span>
-              {unread > 0 ? (
-                <span className="shrink-0 rounded-full bg-(--ui-accent) px-1.5 text-[0.6rem] font-medium text-white">
-                  {unread}
-                </span>
-              ) : null}
-            </button>
-          ))}
         </div>
       ) : null}
     </div>
@@ -1746,7 +1591,6 @@ function LegacyGroupChatWorkspace({ group, members, onBack, visible = true }: Gr
         </div>
       ) : null}
       {header}
-      {threadsPanel}
       <GroupHoldStatus
         holds={room.holds}
         memberLabel={member => displayName(member, botRosterMeta(member, allMeta))}
@@ -1889,13 +1733,7 @@ function GroupChatMainView({ group, origin }: GroupChatMainViewProps) {
   const visible = useValue($visible)
 
   return (
-    <GroupChatWorkspace
-      group={group}
-      members={members}
-      onBack={() => closeGroupChatMainTab(group)}
-      origin={origin}
-      visible={visible}
-    />
+    <GroupChatWorkspace group={group} members={members} onBack={() => closeGroupChatMainTab(group)} origin={origin} visible={visible} />
   )
 }
 
