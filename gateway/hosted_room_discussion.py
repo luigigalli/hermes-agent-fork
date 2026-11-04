@@ -51,9 +51,13 @@ _MEMBER_CONTROL_FRAME_RE = re.compile(
     re.IGNORECASE,
 )
 _MEMBER_CONTROL_FRAME_RELABEL = "[member-quoted "
+# Luigi 04/11 (incidente CHATTING BY THE HEAT SINK #1, 2-4 nov 2026): la plenaria a 16
+# (canone Luigi 31/10 sopra) genera position a due cifre che la coordinata upstream
+# (max 6 membri) rifiutava al restart bloccando la stanza ('turn_id is not a Discussion
+# coordinate'). Il dominio segue il canone: 0 oppure 1-99, senza zero iniziale.
 _TURN_ID_RE = re.compile(
     r"^d(?P<source>[1-9][0-9]*)\.r(?P<round>0|[1-9][0-9]*)\."
-    r"p(?P<position>[0-5])\.s(?P<seen>[1-9][0-9]*)\."
+    r"p(?P<position>0|[1-9][0-9]*)\.s(?P<seen>[1-9][0-9]*)\."
     r"m(?P<member>[0-9a-f]{24})$")
 
 _TARGET_FIELDS = {

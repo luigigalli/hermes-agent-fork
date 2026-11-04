@@ -25,6 +25,9 @@ MEMBERS = [
     for profile in LOCAL_PROFILES[:3]
 ]
 
+# The full plenary roster the fork canon seats together (MAX_DISCUSSION_MEMBERS).
+PLENARY_PROFILES = tuple(f"seat-{index}" for index in range(discussion.MAX_DISCUSSION_MEMBERS))
+
 
 @pytest.fixture
 def room_db(tmp_path: Path) -> tuple[Path, dict]:
@@ -34,6 +37,28 @@ def room_db(tmp_path: Path) -> tuple[Path, dict]:
         room_id=ROOM_ID,
         name="Release",
         members=MEMBERS,
+        authority_gateway_id=GATEWAY_ID,
+        now=1,
+    )
+    return db, room
+
+
+@pytest.fixture
+def plenary_room_db(tmp_path: Path) -> tuple[Path, dict]:
+    db = tmp_path / "state.db"
+    room = hosted_rooms.create_room(
+        db,
+        room_id=ROOM_ID,
+        name="Plenary",
+        members=[
+            {
+                "member_id": f"member-{profile}",
+                "profile": profile,
+                "handle": profile,
+                "display_name": profile.title(),
+            }
+            for profile in PLENARY_PROFILES
+        ],
         authority_gateway_id=GATEWAY_ID,
         now=1,
     )
@@ -107,11 +132,11 @@ def _append_activity(
     )
 
 
-def _next_task(room: dict, db: Path) -> discussion.DiscussionTaskPlan:
+def _next_task(room: dict, db: Path, *, local_profiles=LOCAL_PROFILES) -> discussion.DiscussionTaskPlan:
     decision = discussion.plan_next_task(
         room,
         _events(db),
-        local_profiles=LOCAL_PROFILES,
+        local_profiles=local_profiles,
     )
     assert decision.status == "task", decision
     assert decision.task is not None
@@ -798,3 +823,91 @@ def test_malformed_log_and_task_reconstruction_fail_closed(
             malformed,
             local_profiles=LOCAL_PROFILES,
         )
+
+
+def test_round_zero_plenary_reconstructs_every_member_turn_id(
+    plenary_room_db: tuple[Path, dict],
+):
+    """Round 0 of a 16-seat plenary seats member indexes 0..15: every planned turn id — p6 and
+    p15 included, the seats that wedged room CHATTING BY THE HEAT SINK #1 — must reconstruct
+    deterministically for publication after a restart."""
+    db, room = plenary_room_db
+    user = _append_user(db, event_id="user-1", text="@all plenary round.")
+    assert int(user["seq"]) == 1
+
+    tasks = []
+    for _ in range(discussion.MAX_DISCUSSION_MEMBERS):
+        task = _next_task(room, db, local_profiles=PLENARY_PROFILES)
+        tasks.append(task)
+        deferred = discussion.plan_publication(
+            room,
+            _events(db),
+            task,
+            status="deferred",
+            result={"reason": "member_unavailable"},
+            execution_generation=1,
+            local_profiles=PLENARY_PROFILES,
+        )
+        _append_publication(db, deferred)
+
+    # Round 0 seats everyone in roster order, one waiting turn at a time.
+    assert [task.member_index for task in tasks] == list(range(discussion.MAX_DISCUSSION_MEMBERS))
+    assert [task.member.profile for task in tasks] == list(PLENARY_PROFILES)
+    assert all(task.round_index == 0 for task in tasks)
+
+    for index, task in enumerate(tasks):
+        # Planning writes the seat plainly after the 'p': two digits from seat 10 on.
+        assert task.identity.turn_id.startswith(f"d{user['seq']}.r0.p{index}.s{user['seq']}.m")
+        assert driver.admit_task(
+            db, task.identity, payload=task.payload, clock=time.time)["status"] == "queued"
+        reconstructed = discussion.reconstruct_task_plan(
+            room,
+            _events(db),
+            driver.get_task(db, task.identity),
+            local_profiles=PLENARY_PROFILES,
+        )
+        assert reconstructed.identity == task.identity
+        assert dict(reconstructed.payload) == dict(task.payload)
+        assert reconstructed == task
+
+    # The seats that previously wedged the room: position >= 6.
+    assert ".p6." in tasks[6].identity.turn_id
+    assert ".p15." in tasks[15].identity.turn_id
+
+
+def test_two_digit_position_turn_id_reconstructs_after_restart(
+    room_db: tuple[Path, dict],
+):
+    """Direct regression for the incident turn id: an identity planned at seat 6
+    ('d10.r0.p6.s20.m<digest>') must reconstruct; before the coordinate was widened to the
+    16-member plenary canon it raised 'turn_id is not a Discussion coordinate' and wedged the
+    room's terminal publication path."""
+    db, room = room_db
+    for index in range(9):  # occupy seqs 1..9 so the discussion user event lands at seq 10
+        _append_user(db, event_id=f"filler-{index}", text=f"Filler {index}.", thread_id=f"thread-{index}")
+    _append_user(db, event_id="user-10", text="Report.", thread_id="thread-1")
+
+    validated_room = discussion.validate_room(room, local_profiles=LOCAL_PROFILES)
+    discussion_event = next(
+        event for event in discussion._validated_events(_events(db), room=validated_room)
+        if event.event_id == "user-10")
+    assert int(discussion_event.seq) == 10
+    member = validated_room.members[0]
+    plan = discussion._make_task_plan(
+        room=validated_room,
+        discussion_event=discussion_event,
+        member=member,
+        member_index=6,
+        round_index=0,
+        seen_through_seq=20,
+        prompt="Report from seat 6.")
+    assert plan.identity.turn_id == f"d10.r0.p6.s20.m{discussion._member_digest(member)}"
+
+    driver.admit_task(db, plan.identity, payload=plan.payload, clock=time.time)
+    reconstructed = discussion.reconstruct_task_plan(
+        room,
+        _events(db),
+        driver.get_task(db, plan.identity),
+        local_profiles=LOCAL_PROFILES,
+    )
+    assert reconstructed == plan
