@@ -577,9 +577,7 @@ def _derive_member_watermarks(events: Sequence[_ValidatedEvent]) -> dict[tuple[s
                 raise DiscussionValidationError("turn.settled references no matching member message")
             discussion_seq = next((candidate.seq for candidate in events
                                    if candidate.event_id == event.payload["discussion_event_id"]), None)
-            if discussion_seq is None:
-                raise DiscussionValidationError("turn.settled references no matching user discussion")
-            if watermark >= discussion_seq:
+            if discussion_seq is None or watermark >= discussion_seq:
                 watermark = max(watermark, message.seq)
         watermarks[key] = max(watermarks.get(key, 0), watermark)
     return watermarks
