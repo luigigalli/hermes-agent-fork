@@ -10,7 +10,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const gateway = createGroupGateway()
   const { en } = await import('@/i18n/en')
   const { CANONICAL_GROUP_LOCALES } = await import('./canonical-group-locales')
-  const Panel = ({ children }: { children?: ReactNode }) => <div>{children}</div>
+  const { captureGroupRequests } = await import('./canonical-group-contract-test-utils')
 
   return {
     ...(await pluginSdkMock(gateway.host)),
@@ -20,18 +20,7 @@ vi.mock('@hermes/plugin-sdk', async () => {
     usePluginI18n: () => (key: string) =>
       CANONICAL_GROUP_LOCALES.en[key.replace('canonical.', '') as keyof typeof CANONICAL_GROUP_LOCALES.en] ?? key,
     Button: (p: ComponentProps<'button'>) => <button {...p} />,
-    Codicon: ({ name }: { name?: string }) => <span data-icon={name ?? ''} />,
-    Tip: ({ children }: { children?: ReactNode }) => <>{children}</>,
-    RowButton: (p: ComponentProps<'button'>) => <button {...p} />,
-    cn: (...values: unknown[]) => values.filter(Boolean).join(' '),
-    Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
-    DialogContent: Panel,
-    DialogDescription: Panel,
-    DialogFooter: Panel,
-    DialogHeader: Panel,
-    DialogTitle: Panel,
-    host: { ...gateway.host, requestProfile: request }
-  }
+    host: { ...gateway.host, requestProfile: captureGroupRequests(request).request } }
 })
 import { CanonicalGroupWorkspace } from './canonical-group-workspace'
 const originalDesktop = window.hermesDesktop
@@ -50,10 +39,8 @@ afterEach(() => {
 it('holds Send until the selected attachment is committed, then sends it with the text', async () => {
   let ack!: () => void
   const uploaded = { attachment_id: 'file-one', kind: 'file', name: 'report.txt', mime: 'text/plain', size: 2 }
-  request.mockImplementation(async (_route, method) => {
-    if (method === 'groups.state') {
-      return { room: { name: 'Room' }, driver_status: {} }
-    }
+  request.mockImplementation(async (_route, method, params) => {
+    if (method === 'groups.state') {return { room: { name: 'Room' }, driver_status: {} }}
 
     if (method === 'groups.log') {
       return { events: [] }
@@ -65,7 +52,7 @@ it('holds Send until the selected attachment is committed, then sends it with th
       })
     }
 
-    return {}
+    return method === 'groups.send' ? { client_event_id: params.event_id, accepted: true } : {}
   })
 
   const view = render(

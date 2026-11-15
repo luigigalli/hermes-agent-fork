@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest'
 
-import { CanonicalDesktopProtocol } from './canonical-protocol'
+import { CanonicalDesktopProtocol, slashMutation } from './canonical-protocol'
 
 test('sibling routes survive every rebuilt control and compression follow-up', async () => {
   const protocol = new CanonicalDesktopProtocol()
@@ -269,6 +269,17 @@ test('composer branch and model switch become canonical prepared mutations with 
   expect(protocol.wire('slash.exec', protocol.prepare('slash.exec', { session_id: 's', command: 'help' }))).toBe(
     'slash.exec'
   )
+})
+
+test('/model with --provider becomes the same canonical model mutation the CLI and ACP send', () => {
+  expect(slashMutation('/model gpt-5 --provider openai')).toEqual({ operation: 'model', payload: { model: 'gpt-5', provider: 'openai' } })
+  expect(slashMutation('/model gpt-5 --provider openai --session')).toEqual({ operation: 'model', payload: { model: 'gpt-5', provider: 'openai' } })
+  expect(slashMutation('/model gpt-5 --session --provider openai')).toEqual({ operation: 'model', payload: { model: 'gpt-5', provider: 'openai' } })
+  expect(slashMutation('/model gpt-5 --session')).toEqual({ operation: 'model', payload: { model: 'gpt-5' } })
+  expect(slashMutation('/model --session gpt-5')).toEqual({ operation: 'model', payload: { model: 'gpt-5' } })
+  expect(slashMutation('/model gpt-5 --provider --session openai')).toBeNull()
+  expect(slashMutation('/model gpt-5 --global')).toBeNull()
+  expect(slashMutation('/model --provider openai')).toBeNull()
 })
 
 test('a session.info fanout after a turn refreshes the CAS revision the next mutation presents', () => {

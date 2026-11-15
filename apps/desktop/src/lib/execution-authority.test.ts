@@ -2,7 +2,7 @@ import { JsonRpcGatewayClient } from '@hermes/shared'
 import type { GatewayEvent } from '@hermes/shared'
 import { describe, expect, it } from 'vitest'
 
-import { acceptExecutionEvent } from './execution-authority'
+import { acceptExecutionEvent, executionAdmission } from './execution-authority'
 import frames from './execution-authority.frames.json'
 
 /**
@@ -161,5 +161,14 @@ describe('execution authority fence over real owner frames', () => {
       ['message.complete', false]
     ])
     expect(authorities.get('session')).toMatchObject({ epoch: '2', generation: 2, terminal: true })
+  })
+
+  it("names a claimed execution's admission, never a queued row's cancellation", () => {
+    const start = owner1.find(frame => frame.params.type === 'message.start')!.params
+    const cancellation = owner2.paused_cancel_frames.at(-1)!.params
+
+    expect(executionAdmission(start)).toBe(start.admission_id)
+    expect(cancellation.admission_id).toEqual(expect.any(String))
+    expect(executionAdmission(cancellation)).toBeNull()
   })
 })
