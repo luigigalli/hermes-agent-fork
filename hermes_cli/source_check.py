@@ -525,6 +525,15 @@ def _check_branch(result: dict, co: _Checkout, selected_branch: str, *,
     if reason:
         detail = ("has never been pushed" if reason == "never-pushed"
                   else "is gone from the remote but has commits that are not in main")
+        if reason == "unmerged":
+            # A local-only branch the remote dropped while unmerged is custody-by-design:
+            # the update source is managed externally, so this is a verdict, not a check
+            # failure; the checkout keeps its pin and self-update stays off (t_536c3c97).
+            result.update(update_source="external", localOnly=True, error=None,
+                          keptLocalBranch=selected_branch,
+                          message=f"Updates are managed externally (gitops custody): branch "
+                                  f"'{selected_branch}' {detail} — no self-update source.")
+            return
         result.update(error="branch-local-only", localOnly=True,
                       message=f"Branch '{selected_branch}' {detail}; keeping it instead of switching to main.")
         return
