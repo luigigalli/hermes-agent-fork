@@ -386,6 +386,54 @@ def test_staged_cache_prunes_wheel_index_entries_outside_the_lock(tmp_path):
     assert not (cache / "sdists-v9" / "pypi" / "old-sdist-only").exists()
 
 
+def test_staged_cache_drops_dangling_directory_links(tmp_path):
+    """URL-hash index layers key <name>/<version> as DIRECTORY symlinks into
+    archive-v0; a bucket the lock-scoped prune removes leaves the link behind
+    as a dangling directory symlink, which the staged payload's link check
+    rejects. A cache link that is not self-contained (dangling or resolving
+    outside the cache) is never a cache hit and goes too."""
+    lock = tmp_path / "repo"
+    lock.mkdir()
+    (lock / "uv.lock").write_text(
+        "[[package]]\n"
+        'name = "keep-me"\n'
+        'version = "1.0.0"\n'
+        'source = { registry = "https://pypi.org/simple" }\n',
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    dropped_bucket = cache / "archive-v0" / "gone-bucket"
+    (dropped_bucket / "drop_me-0.9.0.dist-info").mkdir(parents=True)
+    kept_bucket = cache / "archive-v0" / "kept-bucket"
+    (kept_bucket / "keep_me-1.0.0.dist-info").mkdir(parents=True)
+    foreign_dir = tmp_path / "outside-cache"
+    foreign_dir.mkdir()
+    index = cache / "wheels-v6" / "index" / "19d95e00a9f970a9"
+    dropped = index / "drop-me"
+    dropped.mkdir(parents=True)
+    (dropped / "1.0-py3-none-any").symlink_to(dropped_bucket)
+    foreign = index / "absolute-pkg"
+    foreign.mkdir()
+    # An absolute link into a foreign directory pins the fixture's temp home:
+    # shippable only as junk, refused by publish_prepared as "escaped".
+    (foreign / "1.0-py3-none-any").symlink_to(foreign_dir)
+    escaping = index / "escaping-pkg"
+    escaping.mkdir()
+    (escaping / "1.0-py3-none-any").symlink_to("../../../../../outside-cache")
+    kept = index / "keep-me"
+    kept.mkdir()
+    (kept / "1.0-py3-none-any").symlink_to(kept_bucket)
+    native.prune_uv_cache_to_lock(cache, lock)
+    # The pruned bucket is gone; its directory link must go too — before the
+    # hardening it survived as a dangling dir symlink the payload cannot ship.
+    assert not dropped_bucket.is_dir()
+    assert not (dropped / "1.0-py3-none-any").is_symlink()
+    assert not (foreign / "1.0-py3-none-any").is_symlink()
+    assert not (escaping / "1.0-py3-none-any").is_symlink()
+    assert (kept / "1.0-py3-none-any").is_symlink()
+    assert (kept / "1.0-py3-none-any").exists()
+
+
 def test_staged_cache_keeps_a_dotted_dist_the_lock_resolves(tmp_path):
     """``ruamel.yaml`` and ``jaraco.classes`` keep the dot in their dist-info names, while
     uv.lock lists them as ``ruamel-yaml``; the prune must compare normalized names or it
