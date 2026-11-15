@@ -294,8 +294,10 @@ async def check_hermes_update(force: bool = False, profile: Optional[str] = None
     current_version, behind (commits behind, 0 = up to date, -1 = unknown count,
     null = check could not run), update_available, can_apply (git only — the
     dashboard button can apply in place), update_command, message (guidance for
-    non-applyable methods) and, for git installs that are behind, commits
-    [{sha, summary, author, at}] (additive; existing consumers ignore it).
+    non-applyable methods), update_source ('external' marks a checkout whose
+    updates are managed externally; behind is 0 and nothing can apply) and,
+    for git installs that are behind, commits [{sha, summary, author, at}]
+    (additive; existing consumers ignore it).
     """
     if is_commit_build(_server_path("PROJECT_ROOT")):
         return {
@@ -341,6 +343,13 @@ async def check_hermes_update(force: bool = False, profile: Optional[str] = None
         behind = None
 
     payload["behind"] = behind
+    # A custody-managed source answered without error: a verdict, not a failure (t_536c3c97);
+    # the desktop renders it through the unsupported/idle copy instead of "We couldn't reach".
+    if status.get("update_source") == "external":
+        payload.update(update_source="external", can_apply=False, behind=0,
+                       update_available=False,
+                       message=status.get("message") or "Updates are managed externally (gitops custody).")
+        return payload
     if behind is None:
         payload["message"] = "Couldn't reach the update source — try again later."
     elif behind == 0 and status.get("held"):
