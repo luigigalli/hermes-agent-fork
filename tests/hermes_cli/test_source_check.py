@@ -404,7 +404,7 @@ def test_never_pushed_branch_keeps_its_pin(installation, pinned_by):
     assert requests == []
 
 
-@pytest.mark.parametrize("merge", ["fast-forward", "rebase", "unmerged"])
+@pytest.mark.parametrize("merge", ["fast-forward", "rebase"])
 def test_deleted_remote_branch_heals_only_when_its_commits_are_in_main(installation, merge):
     from hermes_cli.source_check import check_for_updates
     root, _linked, home, _base, _head, _responses, _requests, git = installation
@@ -417,8 +417,7 @@ def test_deleted_remote_branch_heals_only_when_its_commits_are_in_main(installat
     elif merge == "rebase":
         git("commit", "-q", "--allow-empty", "-m", "upstream moved on")
         git("cherry-pick", "--allow-empty", work)
-    if merge != "unmerged":
-        git("push", "-q", "origin", "main")
+    git("push", "-q", "origin", "main")
     # Upstream deletes the branch; the prune removes the tracking ref but keeps the upstream config.
     git("push", "-q", "origin", "--delete", "pushed")
     git("fetch", "-q", "--prune", "origin")
@@ -426,16 +425,38 @@ def test_deleted_remote_branch_heals_only_when_its_commits_are_in_main(installat
     branch_file = home / "desktop-update.json"
     branch_file.write_text(json.dumps({"branch": "pushed"}))
     status = check_for_updates(install_root=root, home=home, branch_config_path=branch_file)
-    if merge == "unmerged":
-        assert status["branch"] == "pushed", status
-        assert status["error"] == "branch-local-only"
-        assert "not in main" in status["message"]
-        assert json.loads(branch_file.read_text())["branch"] == "pushed"
-    else:
-        assert "error" not in status, status
-        assert status["branch"] == "main"
-        assert status["targetSha"] == git("rev-parse", "origin/main")
-        assert json.loads(branch_file.read_text())["branch"] == "main"
+    assert "error" not in status, status
+    assert status["branch"] == "main"
+    assert status["targetSha"] == git("rev-parse", "origin/main")
+    assert json.loads(branch_file.read_text())["branch"] == "main"
+
+
+def test_local_only_branch_by_design_answers_external_not_error(installation):
+    """A remote-deleted branch still carrying unmerged local work is custody-by-design: the
+    checker verdicts a managed-external source instead of a failure (t_536c3c97). The pin
+    survives, nothing heals, and the never-pushed twin of this state keeps its error."""
+    from hermes_cli.source_check import check_for_updates
+    root, _linked, home, _base, _head, _responses, _requests, git = installation
+    _bare_origin(installation)
+    git("branch", "custody")
+    _commit_on(git, "custody", "custody work")
+    git("push", "-q", "-u", "origin", "custody")
+    git("push", "-q", "origin", "--delete", "custody")
+    git("fetch", "-q", "--prune", "origin")
+    branch_file = home / "desktop-update.json"
+    branch_file.write_text(json.dumps({"branch": "custody"}))
+    status = check_for_updates(install_root=root, home=home, branch_config_path=branch_file)
+    assert status["update_source"] == "external", status
+    assert status["error"] is None, status
+    assert status["keptLocalBranch"] == "custody"
+    assert status["localOnly"] is True
+    assert "managed externally" in status["message"]
+    assert "not in main" in status["message"]
+    assert status["behind"] is None
+    assert "targetSha" not in status
+    assert json.loads(branch_file.read_text())["branch"] == "custody"
+    git("checkout", "-q", "custody")
+    assert check_for_updates(install_root=root, home=home, force=True)["keptLocalBranch"] == "custody"
 
 
 def test_inherited_git_target_cannot_redirect_an_explicit_install(installation, monkeypatch):
