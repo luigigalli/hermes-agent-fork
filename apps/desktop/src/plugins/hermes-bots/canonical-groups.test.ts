@@ -1,4 +1,3 @@
-import type * as HermesSdk from '@hermes/plugin-sdk'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 const host = vi.hoisted(() => ({
@@ -12,12 +11,20 @@ vi.mock('@hermes/plugin-sdk', async () => {
 
   const { pluginSdkMock } = await import('./group-test-utils')
 
-  return { ...await pluginSdkMock(host), host: { ...host, requestProfile: captureGroupRequests(host.requestProfile).request } }
+  return {
+    ...(await pluginSdkMock(host)),
+    host: { ...host, requestProfile: captureGroupRequests(host.requestProfile).request }
+  }
 })
 
 import { groupAdvertisedMethods, groupExecutionMode, offersGroupMethod } from './canonical-group-capabilities'
 import { CANONICAL_GROUP_CAPABILITIES, STANDALONE_GROUP_CAPABILITIES } from './canonical-group-contract-test-utils'
-import { actCanonicalGroup, canonicalGroupRequest, createCanonicalGroup, discoverCanonicalGroups } from './canonical-groups'
+import {
+  actCanonicalGroup,
+  canonicalGroupRequest,
+  createCanonicalGroup,
+  discoverCanonicalGroups
+} from './canonical-groups'
 import type { CanonicalPendingAction } from './canonical-groups'
 
 beforeEach(() => {
@@ -121,12 +128,24 @@ it('creates only same-authority rosters and dispatches exact advertised attempt 
     )
   }
 
-  await actCanonicalGroup(binding, { kind: 'approval', ...identity, request_id: 'request:original', approval: { choices: ['deny'] } }, 'deny')
-  expect(host.requestProfile).toHaveBeenLastCalledWith(expect.objectContaining(route), 'groups.approve', {
-    profile: route.profile, room_id: binding.roomId, ...identity, request_id: 'request:original', choice: 'deny'
-  },
-  // t_5405440d custody (fork canon): canonical group RPCs ride the shared 8s deadline.
-  8000)
+  await actCanonicalGroup(
+    binding,
+    { kind: 'approval', ...identity, request_id: 'request:original', approval: { choices: ['deny'] } },
+    'deny'
+  )
+  expect(host.requestProfile).toHaveBeenLastCalledWith(
+    expect.objectContaining(route),
+    'groups.approve',
+    {
+      profile: route.profile,
+      room_id: binding.roomId,
+      ...identity,
+      request_id: 'request:original',
+      choice: 'deny'
+    },
+    // t_5405440d custody (fork canon): canonical group RPCs ride the shared 8s deadline.
+    8000
+  )
   const count = host.requestProfile.mock.calls.length
 
   for (const action of [
@@ -151,13 +170,27 @@ it('creates only same-authority rosters and dispatches exact advertised attempt 
     [{ ...approval, approval: { choices: ['once', 'deny'], description: 'Run a tool' } }, 'once']
   ]
 
-  for (const [action, choice] of refused) {await expect(actCanonicalGroup(binding, action, choice)).rejects.toThrow()}
+  for (const [action, choice] of refused) {
+    await expect(actCanonicalGroup(binding, action, choice)).rejects.toThrow()
+  }
 
-  await actCanonicalGroup(binding, { ...approval, approval: { choices: ['once', 'deny'], command: 'rm -rf build' } }, 'once')
-  expect(host.requestProfile).toHaveBeenLastCalledWith(expect.objectContaining(route), 'groups.approve', expect.objectContaining({ choice: 'once' }))
+  await actCanonicalGroup(
+    binding,
+    { ...approval, approval: { choices: ['once', 'deny'], command: 'rm -rf build' } },
+    'once'
+  )
+  expect(host.requestProfile).toHaveBeenLastCalledWith(
+    expect.objectContaining(route),
+    'groups.approve',
+    expect.objectContaining({ choice: 'once' })
+  )
   await actCanonicalGroup(binding, { ...approval, approval: { choices: ['once', 'deny'], ...plugin } }, 'once')
   expect(host.requestProfile).toHaveBeenLastCalledWith(expect.objectContaining(route), 'groups.approve', {
-    profile: route.profile, room_id: binding.roomId, ...identity, request_id: 'request:original', choice: 'once'
+    profile: route.profile,
+    room_id: binding.roomId,
+    ...identity,
+    request_id: 'request:original',
+    choice: 'once'
   })
   expect(host.requestProfile).toHaveBeenCalledTimes(count + 2)
 
@@ -173,13 +206,19 @@ it('retries a lost create reply with the same room id, scoped to the exact creat
   host.requestProfile.mockImplementation(async (_route, _method, params) => {
     const previous = stored.get(params.room_id)
 
-    if (previous && (previous.name !== params.name || JSON.stringify(previous.members) !== JSON.stringify(params.members))) {
+    if (
+      previous &&
+      (previous.name !== params.name || JSON.stringify(previous.members) !== JSON.stringify(params.members))
+    ) {
       throw Object.assign(new Error('room_id already exists with different state'), { code: 4110 })
     }
 
     stored.set(params.room_id, previous ?? { room_id: params.room_id, name: params.name, members: params.members })
 
-    if (loseReply) {loseReply = false; throw new Error('request timed out')}
+    if (loseReply) {
+      loseReply = false
+      throw new Error('request timed out')
+    }
 
     return { room: stored.get(params.room_id) }
   })
@@ -191,7 +230,8 @@ it('retries a lost create reply with the same room id, scoped to the exact creat
   for (const [authority, name, roster] of [
     [{ ...route, connectionId: 'source-b' }, 'Retry', members],
     [{ ...route, profile: 'other' }, 'Retry', members],
-    [route, 'Renamed', members], [route, 'Retry', [{ name: 'alice' }, { name: 'carol' }]]
+    [route, 'Renamed', members],
+    [route, 'Retry', [{ name: 'alice' }, { name: 'carol' }]]
   ] as [typeof route, string, typeof members][]) {
     await createCanonicalGroup(authority, name, roster)
   }
@@ -222,7 +262,11 @@ it('classifies both gateway surfaces by their driver and offers only the methods
   const optional = ['groups.discard', 'groups.attachment.upload', 'groups.attachment.download']
   expect(optional.map(method => offersGroupMethod(standalone, method))).toEqual([false, true, true])
   expect(optional.map(method => offersGroupMethod(canonical, method))).toEqual([true, true, true])
-  expect(['groups.retry', 'groups.approve', 'groups.rename', 'groups.disband'].every(method => offersGroupMethod(standalone, method))).toBe(true)
+  expect(
+    ['groups.retry', 'groups.approve', 'groups.rename', 'groups.disband'].every(method =>
+      offersGroupMethod(standalone, method)
+    )
+  ).toBe(true)
   // No method list keeps every control; an unanswered read offers none yet.
   expect(offersGroupMethod(groupAdvertisedMethods({ driver: true }), 'groups.discard')).toBe(true)
   expect(offersGroupMethod(undefined, 'groups.discard')).toBe(false)

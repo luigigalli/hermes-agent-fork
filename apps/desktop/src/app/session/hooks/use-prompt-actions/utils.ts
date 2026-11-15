@@ -310,7 +310,8 @@ export function isCompressionBusyError(error: unknown): boolean {
  *  with another payload (hermes_state_runtime.ADMITTED_REQUEST_CONFLICT): the send was delivered.
  *  Every other `admission_conflict` (route, binding, lineage) names no such field and stays an error. */
 export function isAdmittedSubmissionConflict(error: unknown): boolean {
-  const data = error instanceof JsonRpcGatewayError ? (error.data as { field?: unknown; reason?: unknown } | undefined) : null
+  const data =
+    error instanceof JsonRpcGatewayError ? (error.data as { field?: unknown; reason?: unknown } | undefined) : null
 
   return data?.reason === 'admission_conflict' && data.field === 'request_id'
 }

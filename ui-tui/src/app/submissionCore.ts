@@ -1,4 +1,8 @@
-import type { InputDetectDropResponse, PromptSubmitResponse, SessionActivateResponse } from '@hermes/shared/gateway-types'
+import type {
+  InputDetectDropResponse,
+  PromptSubmitResponse,
+  SessionActivateResponse
+} from '@hermes/shared/gateway-types'
 import { isUndeliveredCorrectionRefusal } from '@hermes/shared/json-rpc-channel'
 
 import type { GatewayClient } from '../gatewayClient.js'

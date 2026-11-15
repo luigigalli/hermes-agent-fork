@@ -103,7 +103,12 @@ function legacyInstallationLauncher(updateRoot: string, isWindows: boolean): str
     return null
   }
 
-  const legacy: string = path.join(updateRoot, 'venv', isWindows ? 'Scripts' : 'bin', isWindows ? 'hermes.exe' : 'hermes')
+  const legacy: string = path.join(
+    updateRoot,
+    'venv',
+    isWindows ? 'Scripts' : 'bin',
+    isWindows ? 'hermes.exe' : 'hermes'
+  )
 
   return stagedFileExists(legacy) ? legacy : null
 }

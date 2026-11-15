@@ -19,13 +19,19 @@ export function serverOwnsComposerQueue(sessionId: string | null | undefined): b
   const connection = $connection.get()
   const wire = connectionWire(route ?? connection)
 
-  if (wire) { return wire === 'canonical' }
+  if (wire) {
+    return wire === 'canonical'
+  }
 
   // Before the owner's socket is ready: a local owner is a native dial, and so is a window whose
   // own socket carries the native-dial marker.
-  if (route?.mode === 'local') { return true }
+  if (route?.mode === 'local') {
+    return true
+  }
 
-  if (route && route.connectionId !== connection?.connectionId) { return false }
+  if (route && route.connectionId !== connection?.connectionId) {
+    return false
+  }
 
   return Boolean(connection?.wsUrl && new URL(connection.wsUrl).searchParams.has('native_dial'))
 }

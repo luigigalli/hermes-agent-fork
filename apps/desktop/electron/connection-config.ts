@@ -45,7 +45,9 @@ const RT_COOKIE_VARIANTS = ['__Host-hermes_session_rt', '__Secure-hermes_session
 const GATEWAY_COOKIE_SUFFIX = /_[0-9a-f]{16}$/
 
 function isCookieVariant(name: unknown, variants: string[]): boolean {
-  return typeof name === 'string' && (variants.includes(name) || variants.includes(name.replace(GATEWAY_COOKIE_SUFFIX, '')))
+  return (
+    typeof name === 'string' && (variants.includes(name) || variants.includes(name.replace(GATEWAY_COOKIE_SUFFIX, '')))
+  )
 }
 
 // Keep this aligned with hermes_cli.profiles.validate_profile_name(). `default`

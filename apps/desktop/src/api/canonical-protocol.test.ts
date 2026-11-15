@@ -272,9 +272,18 @@ test('composer branch and model switch become canonical prepared mutations with 
 })
 
 test('/model with --provider becomes the same canonical model mutation the CLI and ACP send', () => {
-  expect(slashMutation('/model gpt-5 --provider openai')).toEqual({ operation: 'model', payload: { model: 'gpt-5', provider: 'openai' } })
-  expect(slashMutation('/model gpt-5 --provider openai --session')).toEqual({ operation: 'model', payload: { model: 'gpt-5', provider: 'openai' } })
-  expect(slashMutation('/model gpt-5 --session --provider openai')).toEqual({ operation: 'model', payload: { model: 'gpt-5', provider: 'openai' } })
+  expect(slashMutation('/model gpt-5 --provider openai')).toEqual({
+    operation: 'model',
+    payload: { model: 'gpt-5', provider: 'openai' }
+  })
+  expect(slashMutation('/model gpt-5 --provider openai --session')).toEqual({
+    operation: 'model',
+    payload: { model: 'gpt-5', provider: 'openai' }
+  })
+  expect(slashMutation('/model gpt-5 --session --provider openai')).toEqual({
+    operation: 'model',
+    payload: { model: 'gpt-5', provider: 'openai' }
+  })
   expect(slashMutation('/model gpt-5 --session')).toEqual({ operation: 'model', payload: { model: 'gpt-5' } })
   expect(slashMutation('/model --session gpt-5')).toEqual({ operation: 'model', payload: { model: 'gpt-5' } })
   expect(slashMutation('/model gpt-5 --provider --session openai')).toBeNull()
@@ -464,7 +473,11 @@ test('mints v4 create, submit and mutation ids where crypto.randomUUID is absent
 
   try {
     const protocol = new CanonicalDesktopProtocol()
-    protocol.result('session.resume', { profile: 'default', session_id: 's' }, { session_id: 's', revision: 2, execution_generation: 3 })
+    protocol.result(
+      'session.resume',
+      { profile: 'default', session_id: 's' },
+      { session_id: 's', revision: 2, execution_generation: 3 }
+    )
 
     const cases: Array<[string, Record<string, unknown>, string]> = [
       ['session.create', { profile: 'default', source: 'desktop' }, 'request_id'],

@@ -4,7 +4,8 @@ import type { PluginUpdateTranslations } from './types_plugin_update'
 export const frPluginUpdate: PluginUpdateTranslations = {
   folderAccess: {
     title: 'Accès aux dossiers',
-    hint: (name: string) => `${name} peut lire et modifier les fichiers de ces dossiers. Une révocation prend effet immédiatement.`,
+    hint: (name: string) =>
+      `${name} peut lire et modifier les fichiers de ces dossiers. Une révocation prend effet immédiatement.`,
     revoke: 'Révoquer',
     revokeLabel: (path: string) => `Révoquer l’accès à ${path}`,
     revoked: (name: string, path: string) => `${name} ne peut plus utiliser ${path}.`,

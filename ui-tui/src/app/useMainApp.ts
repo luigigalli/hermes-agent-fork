@@ -1258,7 +1258,14 @@ export function useMainApp(gw: GatewayClient) {
     done()
   }, [])
 
-  const approvalAnswers = useApprovalAnswers(overlay.approval, gw.isCanonical, composerActions.enqueue, respondWith, rpc, sys)
+  const approvalAnswers = useApprovalAnswers(
+    overlay.approval,
+    gw.isCanonical,
+    composerActions.enqueue,
+    respondWith,
+    rpc,
+    sys
+  )
 
   const answerSudo = useCallback(
     (pw: string) => {

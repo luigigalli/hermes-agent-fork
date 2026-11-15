@@ -19,7 +19,21 @@ import type { ParsedVoiceRecordKey } from '../lib/platform.js'
 import type { RpcResult } from '../lib/rpc.js'
 import type { ActiveWidget } from '../sdk/types.js'
 import type { Theme } from '../theme.js'
-import type { ApprovalReq, ClarifyReq, ConfirmReq, DetailsMode, Msg, PanelSection, SecretReq, SectionVisibility, SlashCatalog, SudoReq, VaultCodeReq, VaultSaveLoginReq, VaultUnlockReq } from '../types.js'
+import type {
+  ApprovalReq,
+  ClarifyReq,
+  ConfirmReq,
+  DetailsMode,
+  Msg,
+  PanelSection,
+  SecretReq,
+  SectionVisibility,
+  SlashCatalog,
+  SudoReq,
+  VaultCodeReq,
+  VaultSaveLoginReq,
+  VaultUnlockReq
+} from '../types.js'
 
 import type { RewindSubmission } from './backtrackStore.js'
 import type { SubmissionDestination } from './submissionDestination.js'

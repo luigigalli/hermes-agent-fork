@@ -291,10 +291,17 @@ describe('submissionCore.submitPrompt — clarify batch declaration', () => {
 
     submitPrompt('fix it', makeDeps(gw), true, undefined, {
       behindTurn: true,
-      queueItem: { controlMethod: 'session.redirect', executionGeneration: 3, submissionId: 'c1', text: 'fix it' } as never
+      queueItem: {
+        controlMethod: 'session.redirect',
+        executionGeneration: 3,
+        submissionId: 'c1',
+        text: 'fix it'
+      } as never
     })
     submitPrompt('ask me', makeDeps(gw))
-    await vi.waitFor(() => expect(request.mock.calls.map(([method]) => method)).toEqual(['session.redirect', 'prompt.submit']))
+    await vi.waitFor(() =>
+      expect(request.mock.calls.map(([method]) => method)).toEqual(['session.redirect', 'prompt.submit'])
+    )
 
     expect(request.mock.calls[0]?.[1]).not.toHaveProperty('clarify_batch')
     expect(request.mock.calls[1]?.[1]).toMatchObject({ clarify_batch: true })

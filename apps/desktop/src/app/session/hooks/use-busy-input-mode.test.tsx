@@ -164,5 +164,9 @@ it('switches to the session policy once a public connection negotiates the canon
     act(() => recordConnectionWire('vps', 'canonical'))
     await waitFor(() => expect(hook.result.current).toBe('queue'))
     expect(request).toHaveBeenCalledWith('config.get', { key: 'busy', session_id: 'chat' })
-  } finally { hook.unmount(); $connection.set(null); $connectionWires.set({}) }
+  } finally {
+    hook.unmount()
+    $connection.set(null)
+    $connectionWires.set({})
+  }
 })

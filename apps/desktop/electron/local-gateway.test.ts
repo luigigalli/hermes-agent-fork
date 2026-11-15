@@ -37,7 +37,12 @@ test('the ensure client never hands a dev renderer origin to the long-lived loca
   const printEnv = ['-e', 'process.stdout.write(JSON.stringify(process.env.HERMES_DESKTOP_DEV_SERVER ?? null))']
 
   const result = await runGatewayEnsure(
-    { command: process.execPath, args: printEnv, env: { HERMES_DESKTOP_DEV_SERVER: 'http://127.0.0.1:5174' }, shell: false },
+    {
+      command: process.execPath,
+      args: printEnv,
+      env: { HERMES_DESKTOP_DEV_SERVER: 'http://127.0.0.1:5174' },
+      shell: false
+    },
     process.cwd(),
     '/home/x/.hermes',
     { PATH: process.env.PATH ?? '', HERMES_DESKTOP_DEV_SERVER: 'http://127.0.0.1:5174' }
@@ -427,7 +432,12 @@ test('a voice socket dialed on its own /api/ws reservation drops Origin; other p
     url.searchParams.delete('ticket')
     url.pathname = path
 
-    return dials.headers({ url: url.toString(), webContentsId: 7, resourceType: 'webSocket', requestHeaders: { Origin: 'http://renderer' } })
+    return dials.headers({
+      url: url.toString(),
+      webContentsId: 7,
+      resourceType: 'webSocket',
+      requestHeaders: { Origin: 'http://renderer' }
+    })
   }
 
   expect(dial('/api/audio/speak-stream')).toEqual({})

@@ -916,7 +916,10 @@ test('registry sources: ssh backends use the shared cross-profile aggregate', as
       calls.push({ descriptor, path })
 
       return {
-        sessions: [{ id: 's-research', profile: 'research', message_count: 3 }, { id: 's-chief', profile: 'chief-of-staff', message_count: 3 }],
+        sessions: [
+          { id: 's-research', profile: 'research', message_count: 3 },
+          { id: 's-chief', profile: 'chief-of-staff', message_count: 3 }
+        ],
         total: 2
       }
     }
@@ -966,7 +969,9 @@ test('registry sources: an older ssh runtime without the aggregate reads each po
   )
 
   assert.deepEqual(
-    calls.filter(({ path }) => path.startsWith('/api/sessions?')).map(({ descriptor, path }) => [descriptor, path.includes('profile=')]),
+    calls
+      .filter(({ path }) => path.startsWith('/api/sessions?'))
+      .map(({ descriptor, path }) => [descriptor, path.includes('profile=')]),
     [
       ['spark-default', false],
       ['spark-research', false]
@@ -988,9 +993,15 @@ test('pinned registry aggregation counts ssh profiles served through the default
     backends: [{ descriptor: 'default-desc', profileLabel: 'default' }]
   }
 
-  assert.equal(hasPinnedRegistrySessionSource('gateway-ssh', 'gamma', [{ ...source, sharedProfiles: ['default', 'gamma'] }]), true)
+  assert.equal(
+    hasPinnedRegistrySessionSource('gateway-ssh', 'gamma', [{ ...source, sharedProfiles: ['default', 'gamma'] }]),
+    true
+  )
   assert.equal(hasPinnedRegistrySessionSource('gateway-ssh', 'gamma', [source]), false)
-  assert.equal(hasPinnedRegistrySessionSource('gateway-ssh', 'delta', [{ ...source, sharedProfiles: ['default', 'gamma'] }]), false)
+  assert.equal(
+    hasPinnedRegistrySessionSource('gateway-ssh', 'delta', [{ ...source, sharedProfiles: ['default', 'gamma'] }]),
+    false
+  )
 })
 
 test('registry sources: forced-local backends are read per profile', async () => {

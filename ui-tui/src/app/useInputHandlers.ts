@@ -14,7 +14,13 @@ import { computeWheelStep, initWheelAccelForHost } from '../lib/wheelAccel.js'
 import { closeWidget, dispatchWidgetInput } from '../sdk/host.js'
 
 import { $agentDockCollapsed } from './agentRoster.js'
-import { $backtrackPrime, $pendingRewind, cancelBacktrackPrime, cancelPendingRewind, primeBacktrack } from './backtrackStore.js'
+import {
+  $backtrackPrime,
+  $pendingRewind,
+  cancelBacktrackPrime,
+  cancelPendingRewind,
+  primeBacktrack
+} from './backtrackStore.js'
 import { getInputSelection } from './inputSelectionStore.js'
 import {
   type ComposerActions,
