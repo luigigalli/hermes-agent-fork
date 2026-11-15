@@ -19,10 +19,14 @@ const { cache, connection } = vi.hoisted(() => ({
 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
   const keyOf = (key: unknown[]) => JSON.stringify(key)
 
   return {
+
+    ...actual,
     atom,
     host: { state: { connectionId: { get: () => connection.id }, profile: { get: () => 'default' } } },
     queryClient: {

@@ -6,9 +6,13 @@ import { parseGroupChatMentions, resolveGroupResponders, unaddressedGroupMention
 import type { GroupMember, GroupMessage } from './types'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
 
   return {
+
+    ...actual,
     atom,
     host: { request: vi.fn(), state: { connectionId: { get: () => 'local' }, profile: { get: () => 'default' } } },
     queryClient: { invalidateQueries: vi.fn() },

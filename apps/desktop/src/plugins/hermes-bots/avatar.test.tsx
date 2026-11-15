@@ -21,9 +21,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { blobatarSvgMock } = vi.hoisted(() => ({ blobatarSvgMock: vi.fn() }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
 
   return {
+
+    ...actual,
     atom,
     blobatarSvg: (seed: string, opts: unknown) => blobatarSvgMock(seed, opts) as string,
     createBudgetedLoop: undefined,

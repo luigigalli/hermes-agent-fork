@@ -3,10 +3,14 @@ import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { en } = await import('@/i18n/en')
   const { relativeTime } = await import('@/lib/time')
 
   return {
+
+    ...actual,
     ...(await (await import('./group-test-utils')).pluginSdkMock({})),
     relativeTime,
     en,

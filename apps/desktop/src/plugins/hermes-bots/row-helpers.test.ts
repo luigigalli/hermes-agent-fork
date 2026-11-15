@@ -27,9 +27,13 @@ import {
 import type { RosterRow } from './types'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
 
   return {
+
+    ...actual,
     atom,
     host: { state: { connectionId: { get: () => 'local' } } },
     queryClient: undefined,

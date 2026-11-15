@@ -15,10 +15,14 @@ import type { DisplayStatus } from './screen-connection'
 import type { RosterRow } from './types'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { useStore } = await import('@nanostores/react')
   const { onGatewayEvent } = await import('../../contrib/events')
 
   return {
+
+    ...actual,
     Button: (props: ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props} />,
     Codicon: () => null,
     GlyphSpinner: () => null,

@@ -58,9 +58,13 @@ const { clearBotAttentionMock, hostMock, noteBotAttentionMock, UnboundedCache } 
 
 // relay.ts imports ./shared, which holds the $pendingBotOpen atom.
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
 
-  return { atom, host: hostMock, LruCache: UnboundedCache }
+  return {
+    ...actual,
+ atom, host: hostMock, LruCache: UnboundedCache }
 })
 
 vi.mock('./data', () => ({

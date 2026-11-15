@@ -7,12 +7,16 @@ const doors = vi.hoisted(() => ({
 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
   const { QueryClient } = await import('@tanstack/react-query')
   const connectionId = atom<string | null>(null)
   doors.setConnection.mockImplementation(id => connectionId.set(id))
 
   return {
+
+    ...actual,
     atom,
     queryClient: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
     host: { ...doors, state: { connectionId }, activeConnectionId: () => connectionId.get() },

@@ -5,8 +5,12 @@ import { afterEach, expect, it, vi } from 'vitest'
 const request = vi.hoisted(() => vi.fn())
 
 // A native <select> stands in for the Radix one: same value/onValueChange contract.
-vi.mock('@hermes/plugin-sdk', () => ({
-  Button: (props: ComponentProps<'button'>) => <button {...props} />,
+vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
+  return {
+    ...actual,
+    Button: (props: ComponentProps<'button'>) => <button {...props} />,
   Dialog: ({ children, open }: { children: ReactNode; open: boolean }) => (open ? <div>{children}</div> : null),
   DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -41,8 +45,9 @@ vi.mock('@hermes/plugin-sdk', () => ({
   ),
   SelectTrigger: () => null,
   SelectValue: () => null,
-  Textarea: (props: ComponentProps<'textarea'>) => <textarea {...props} />
-}))
+    Textarea: (props: ComponentProps<'textarea'>) => <textarea {...props} />
+  }
+})
 vi.mock('./canonical-groups', async importOriginal => ({
   ...(await importOriginal<object>()),
   canonicalGroupRequest: request

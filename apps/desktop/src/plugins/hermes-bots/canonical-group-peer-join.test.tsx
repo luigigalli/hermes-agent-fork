@@ -13,6 +13,8 @@ const { request, union, notify, language } = vi.hoisted(() => ({
   union: { profiles: [] as unknown[] }
 }))
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom: createAtom } = await import('nanostores')
   const { useStore } = await import('@nanostores/react')
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
@@ -22,6 +24,8 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const { ConfirmDialog } = await import('@/components/ui/confirm-dialog')
 
   return {
+
+    ...actual,
     ...(await pluginSdkMock(gateway.host)),
     atom: createAtom,
     useValue: useStore,

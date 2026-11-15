@@ -6,9 +6,13 @@ const request = vi.hoisted(() => vi.fn())
 
 // A native <select> stands in for the Radix one: same value/onValueChange contract.
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { en } = await import('@/i18n/en')
 
   return {
+
+    ...actual,
     ...(await (await import('./group-test-utils')).pluginSdkMock({})),
     atom: (await import('nanostores')).atom,
     host: { requestProfile: request },

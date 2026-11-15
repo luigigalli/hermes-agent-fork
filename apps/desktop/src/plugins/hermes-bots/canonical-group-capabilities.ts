@@ -196,13 +196,22 @@ export function useGroupCapability(active: boolean, attempt = 0) {
         // (the dialog only explains `unavailable`), so wedge-class rejections
         // (stalled dial, incompatible gateway) surface through this notify
         // with their cause, and settle() falls to the visible outage state.
-        host.notify({
-          kind: 'error',
-          message:
-            error instanceof Error && error.message
-              ? error.message
-              : String(error || 'groups.capabilities probe failed')
-        })
+        // A gateway without the groups surface at all (`-32601`, fork custody:
+        // legacy renderers) is not a wedge — its outage state already explains
+        // the room, so no toast rides on top of the status line.
+        const unknownMethod =
+          (error as { code?: unknown; data?: { code?: unknown } } | null)?.code === -32601 ||
+          (error as { data?: { code?: unknown } } | null)?.data?.code === -32601 ||
+          (error instanceof Error && error.message.startsWith('unknown method:'))
+        if (!unknownMethod) {
+          host.notify({
+            kind: 'error',
+            message:
+              error instanceof Error && error.message
+                ? error.message
+                : String(error || 'groups.capabilities probe failed')
+          })
+        }
         settle(null, true)
       }
     )

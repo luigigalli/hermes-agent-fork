@@ -14,9 +14,13 @@ import type { RosterRow } from './types'
 const calls = vi.hoisted(() => [] as string[])
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { onGatewayEvent } = await import('../../contrib/events')
 
   return {
+
+    ...actual,
     Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
       <button {...props}>{children}</button>
     ),

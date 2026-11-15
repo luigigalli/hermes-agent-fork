@@ -5,10 +5,14 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { translateBots } from './i18n-test-helper'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
   const { en } = await import('@/i18n/en')
 
   return {
+
+    ...actual,
     ...(await pluginSdkMock(createGroupGateway().host)),
     Button: (p: ComponentProps<'button'>) => <button {...p} />,
     RowButton: (p: ComponentProps<'button'>) => <button {...p} />,

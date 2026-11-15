@@ -193,7 +193,9 @@ it.each(disbandCases)(
       fireEvent.click(dialog.getByRole('button', { name: 'Cancel' }))
       expect(view.baseElement.textContent).not.toContain(labels.cycleStopped)
       expect(screen.getByRole('button', { name: 'Discard' })).toBeTruthy()
-      fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+      const disbandRetry = screen.getByRole<HTMLButtonElement>('button', { name: 'Retry' })
+      await waitFor(() => expect(disbandRetry.disabled).toBe(false))
+      fireEvent.click(disbandRetry)
       const { member_id, task_id, execution_generation } = snapshot.driver_status.pending_actions[0]
       await waitFor(() =>
         expect(request).toHaveBeenCalledWith(
@@ -205,7 +207,9 @@ it.each(disbandCases)(
             member_id,
             task_id,
             execution_generation
-          }
+          },
+          // Same fork-custody 8s deadline on the recovery retry.
+          8000
         )
       )
     }
@@ -251,16 +255,24 @@ it.each(locales.flatMap(language => (['stopZero', 'stopMixed'] as const).map(res
     expect(await screen.findAllByText(stopAdvice[language][1])).not.toHaveLength(0)
     expect(view.baseElement.textContent).not.toContain(labels.cycleStopped)
     expect(screen.getByRole('button', { name: 'Discard' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    const retry = screen.getByRole<HTMLButtonElement>('button', { name: 'Retry' })
+    await waitFor(() => expect(retry.disabled).toBe(false))
+    fireEvent.click(retry)
     const { member_id, task_id, execution_generation } = snapshot.driver_status.pending_actions[0]
     await waitFor(() =>
-      expect(request).toHaveBeenCalledWith(expect.anything(), 'groups.retry', {
-        profile: 'default',
-        room_id: 'linked',
-        member_id,
-        task_id,
-        execution_generation
-      })
+      expect(request).toHaveBeenCalledWith(
+        expect.anything(),
+        'groups.retry',
+        {
+          profile: 'default',
+          room_id: 'linked',
+          member_id,
+          task_id,
+          execution_generation
+        },
+        // The fork's 8s RPC deadline rides every plenary request (8342b18d97 custody).
+        8000
+      )
     )
   }
 )

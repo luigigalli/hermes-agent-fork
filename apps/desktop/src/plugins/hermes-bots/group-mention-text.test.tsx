@@ -23,9 +23,13 @@ import type { GroupMember } from './types'
 const selectedLocale = vi.hoisted(() => ({ value: 'en' }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
 
   return {
+
+    ...actual,
     atom,
     usePluginI18n: () => translateBotsIn(selectedLocale.value),
     host: {

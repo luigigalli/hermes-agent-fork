@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const request = vi.hoisted(() => vi.fn())
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
   const base = await pluginSdkMock(createGroupGateway().host)
   const { en } = await import('@/i18n/en')
@@ -13,6 +15,8 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const Panel = ({ children }: { children?: ReactNode }) => <div>{children}</div>
 
   return {
+
+    ...actual,
     ...base,
     Button: Clickable,
     RowButton: Clickable,

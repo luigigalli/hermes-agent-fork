@@ -13,11 +13,15 @@ import type { GroupMember } from './types'
 const { host } = vi.hoisted(() => ({ host: {} as Record<string, unknown> }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { pluginSdkMock } = await import('./group-test-utils')
   const base = await pluginSdkMock(host)
   const { en } = await import('@/i18n/en')
 
   return {
+
+    ...actual,
     ...base,
     Button: (props: React.ComponentProps<'button'>) => <button type="button" {...props} />,
     cn: (...values: unknown[]) => values.filter(Boolean).join(' '),

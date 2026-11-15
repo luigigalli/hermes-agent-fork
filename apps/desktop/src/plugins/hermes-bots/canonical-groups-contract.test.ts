@@ -7,10 +7,14 @@ const doubles = vi.hoisted(() => ({
   capture: undefined as ReturnType<typeof captureGroupRequests> | undefined
 }))
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { captureGroupRequests } = await import('./canonical-group-contract-test-utils')
   doubles.capture = captureGroupRequests(doubles.request)
 
-  return { host: { requestProfile: doubles.capture.request }, randomUuid: (await import('@hermes/shared')).randomUuid }
+  return {
+    ...actual,
+ host: { requestProfile: doubles.capture.request }, randomUuid: (await import('@hermes/shared')).randomUuid }
 })
 
 import {

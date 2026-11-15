@@ -7,11 +7,15 @@ const host = vi.hoisted(() => ({
 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { captureGroupRequests } = await import('./canonical-group-contract-test-utils')
 
   const { pluginSdkMock } = await import('./group-test-utils')
 
   return {
+
+    ...actual,
     ...(await pluginSdkMock(host)),
     host: { ...host, requestProfile: captureGroupRequests(host.requestProfile).request }
   }
@@ -182,16 +186,24 @@ it('creates only same-authority rosters and dispatches exact advertised attempt 
   expect(host.requestProfile).toHaveBeenLastCalledWith(
     expect.objectContaining(route),
     'groups.approve',
-    expect.objectContaining({ choice: 'once' })
+    expect.objectContaining({ choice: 'once' }),
+    // The fork's plenary surface rides the 8s RPC deadline (8342b18d97 custody).
+    8000
   )
   await actCanonicalGroup(binding, { ...approval, approval: { choices: ['once', 'deny'], ...plugin } }, 'once')
-  expect(host.requestProfile).toHaveBeenLastCalledWith(expect.objectContaining(route), 'groups.approve', {
-    profile: route.profile,
-    room_id: binding.roomId,
-    ...identity,
-    request_id: 'request:original',
-    choice: 'once'
-  })
+  expect(host.requestProfile).toHaveBeenLastCalledWith(
+    expect.objectContaining(route),
+    'groups.approve',
+    {
+      profile: route.profile,
+      room_id: binding.roomId,
+      ...identity,
+      request_id: 'request:original',
+      choice: 'once'
+    },
+    // Same 8s deadline custody on the replayed approval.
+    8000
+  )
   expect(host.requestProfile).toHaveBeenCalledTimes(count + 2)
 
   expect(host.request).not.toHaveBeenCalled()

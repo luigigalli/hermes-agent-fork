@@ -102,7 +102,11 @@ const bannedTerms = {
   ru: /комнат|групп[а-яё]* шлюза|исполнител[а-яё]* групп|драйвер[а-яё]*\s+групп[а-яё]*|каноническ/iu,
   fr: /chats? de groupe|\bsalons?\b|groupes? de (?:la )?passerelle|pilote de groupe|canonique/iu,
   de: /\b(?:gruppen|chat)?(?:raum|räume)|Gateway-Gruppe|Gruppentreiber|kanonisch/iu,
-  es: /chats? grupal(?:es)?|(?<![\p{L}\p{M}])salas?(?![\p{L}\p{M}])|grupos? de (?:la )?pasarela|controlador de grupo|canónic/iu
+  es: /chats? grupal(?:es)?|(?<![\p{L}\p{M}])salas?(?![\p{L}\p{M}])|grupos? de (?:la )?pasarela|controlador de grupo|canónic/iu,
+  // Italian joins the wording canon with its own drift watch-list: desktop rooms
+  // ('sale'/'stanza') and gateway-owned group words ('gruppi del gateway') read like
+  // the legacy vocabulary the canon replaced with the group-chat naming.
+  it: /\b(?:sale|stanza|stanze|rooms?)\b|grupp[oi] del gateway|driver di gruppo|canonico/iu
 } satisfies Record<keyof typeof BOTS_LOCALES, RegExp>
 
 function visibleStrings(value: unknown): string[] {

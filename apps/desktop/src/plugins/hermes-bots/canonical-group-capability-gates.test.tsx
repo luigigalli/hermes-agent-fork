@@ -583,13 +583,20 @@ it("shows a classic room's earlier messages on the gate read only and inert, and
   classicRoom('Remote', mini, { log, sessions: { 'thread:t1::mini::mini-a': 'stored-1' } })
   const view = render(<GroupChatWorkspace group="Remote" members={mini} />)
   await screen.findByText(CANONICAL_GROUP_LOCALES.en.legacyRoomElsewhere)
-  // Shown, read only, with nothing resolved and only the public link live.
-  const earlier = screen.getByRole('region', { name: CANONICAL_GROUP_LOCALES.en.earlierMessages })
-  expect(earlier.textContent).toContain('MEDIA:/home/user/.ssh/id_rsa')
-  expect(earlier.querySelector('img, video, audio, button')).toBeNull()
-  expect([...earlier.querySelectorAll('a')].map(link => link.getAttribute('href'))).toEqual([
-    'https://example.com/docs'
-  ])
+  // Fork custody (deposit-spec 19/10): the durable archive rides the gate as the
+  // read-only threads pane. Collapsed by default; a row click reveals the entries —
+  // read only, with nothing resolved and only the public link live.
+  const paneToggle = screen.getByRole('button', {
+    name: new RegExp(CANONICAL_GROUP_LOCALES.en.archiveTitle.replace(/[()[\]]/g, '\\$&'))
+  })
+  fireEvent.click(paneToggle)
+  const pane = paneToggle.parentElement as HTMLElement
+  fireEvent.click(screen.getByText(/Show \[the docs\]/))
+  expect(pane.textContent).toContain('MEDIA:/home/user/.ssh/id_rsa')
+  // Media never resolves in the pane: no media elements, and the fork's rows stay
+  // fully inert plain text — not even the public link is live in the archive.
+  expect(pane.querySelector('img, video, audio')).toBeNull()
+  expect(pane.querySelectorAll('a')).toHaveLength(0)
   // No media or file read reached any gateway: only the capability check and the room lookup.
   expect(new Set(request.mock.calls.map(call => call[1]))).toEqual(new Set(['groups.capabilities', 'groups.list']))
   view.unmount()

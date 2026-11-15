@@ -27,9 +27,13 @@ import { unaddressedGroupMentions } from './group-rounds'
 import type { GroupMember, GroupMessage } from './types'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
 
   return {
+
+    ...actual,
     atom,
     host: {
       request: vi.fn(),

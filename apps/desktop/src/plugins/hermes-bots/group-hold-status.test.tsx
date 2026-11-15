@@ -7,11 +7,15 @@ import type { GroupMember } from './types'
 const { host } = vi.hoisted(() => ({ host: {} as Record<string, unknown> }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
   Object.assign(host, createGroupGateway().host)
   const base = await pluginSdkMock(host)
 
   return {
+
+    ...actual,
     ...base,
     Button: (props: React.ComponentProps<'button'>) => <button type="button" {...props} />,
     cn: (...values: unknown[]) => values.filter(Boolean).join(' '),

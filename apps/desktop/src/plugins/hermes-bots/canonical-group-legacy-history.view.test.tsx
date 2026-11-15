@@ -47,7 +47,12 @@ const state = {
   gateway: host.state.gateway as WritableAtom<string>
 }
 
-const roster = [{ name: 'alpha', connectionId: 'local' }]
+// Upstream's shared gate check (canonicalGroupRoster) requires two bots to form a
+// gateway group, so the legacy-gate view uses a two-bot roster on this fork too.
+const roster = [
+  { name: 'alpha', connectionId: 'local' },
+  { name: 'beta', connectionId: 'local' }
+]
 const members = roster.map(m => ({ member_id: m.name, profile: m.name, handle: m.name }))
 const t0 = 1_700_000_000_000
 
@@ -106,7 +111,7 @@ it('the pane is collapsed by default; expanding shows the archived threads witho
 it('a room with no local archive shows the honest absence note only when asked to', () => {
   const withNote = render(<CanonicalGroupLegacyHistory room={undefined} showWhenEmpty />)
 
-  expect(withNote.container.textContent).toContain("This room's archived history is not in")
+  expect(withNote.container.textContent).toContain("This group chat's archived history is not in")
   cleanup()
   expect(render(<CanonicalGroupLegacyHistory room={undefined} />).container.firstChild).toBeNull()
 })
@@ -117,9 +122,9 @@ it('the legacy-room gate shows the archive above the Start action, copy from the
     render(<GroupChatWorkspace group="Team" members={roster} />)
   })
 
-  expect(screen.getByRole('button', { name: 'Start gateway group' })).toBeTruthy()
-  expect(document.body.textContent).toContain('Legacy Desktop room')
-  expect(document.body.textContent).toContain('shown read-only above')
+  expect(screen.getByRole('button', { name: 'Start new group' })).toBeTruthy()
+  // Upstream's gate paragraph (the fork's legacy view rides it); the archive pane above stays.
+  expect(document.body.textContent).toContain('Desktop ran this group chat itself')
   // The archived pane rides the room's durable record, collapsed by default.
   expect(screen.getByRole('button', { name: /Past threads \(read-only\)/ })).toBeTruthy()
 })
@@ -130,8 +135,10 @@ it('a restored canonical key on a missing room does not pretend the archive pane
     render(<GroupChatWorkspace group="canonical:local:default:gone" members={roster} origin="key" />)
   })
 
-  expect(screen.getByRole('button', { name: 'Start gateway group' })).toBeTruthy()
+  // The restored key resolves through its own route; the room's view (or the gate)
+  // must never mount a durable-archive pane for a room with no local record.
   expect(screen.queryByRole('button', { name: /Past threads \(read-only\)/ })).toBeNull()
+  expect(document.body.textContent).not.toContain('Past threads')
 })
 
 function gateway() {

@@ -6,11 +6,15 @@ import { expectDownloaded, observeDownloads } from './canonical-download-test-ut
 
 const request = vi.hoisted(() => vi.fn())
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { en } = await import('@/i18n/en')
   const { Textarea } = await import('@/components/ui/textarea')
   const { captureGroupRequests } = await import('./canonical-group-contract-test-utils')
 
   return {
+
+    ...actual,
     ...(await (await import('./group-test-utils')).pluginSdkMock({})),
     Textarea,
     atom: (await import('nanostores')).atom,

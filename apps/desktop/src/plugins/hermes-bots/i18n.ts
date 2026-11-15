@@ -50,8 +50,8 @@ import { getPluginCtx } from './shared'
 const IT_GATES_LOCALES = {
   legacyGate: {
     legacyRoom:
-      'Questa è una room di un desktop legacy. Avvia un gruppo gestito dal gateway con questi membri per continuare a scrivere; i thread passati sono mostrati in alto in sola lettura e non vengono riprodotti nella nuova room.',
-    start: 'Avvia gruppo del gateway'
+      'Questa è una chat di un desktop legacy. Avvia un gruppo gestito dal gateway con questi membri per continuare a scrivere; i thread passati sono mostrati in alto in sola lettura e non vengono riprodotti nella nuova chat.',
+    start: 'Avvia nuovo gruppo'
   }
 }
 
@@ -59,8 +59,8 @@ const en: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES.en,
   legacyGate: {
     legacyRoom:
-      "This is a legacy Desktop room. Start a gateway-owned group with these members to keep writing; the room's old threads are shown read-only above and are not replayed into the new room.",
-    start: 'Start gateway group'
+      "This is a legacy Desktop chat. Start a gateway-owned group with these members to keep writing; the chat's old threads are shown read-only above and are not replayed into the new chat.",
+    start: 'Start new group'
   },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES.en,
   editor: {
@@ -504,8 +504,8 @@ const ja: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES.ja,
   legacyGate: {
     legacyRoom:
-      'これはレガシーなデスクトップルームです。書き続けるには、これらのメンバーでゲートウェイ管理のグループを開始してください。過去のスレッドは上に読み取り専用で表示され、新しいルームには再生されません。',
-    start: 'ゲートウェイグループを開始'
+      'これはレガシーなデスクトップチャットです。書き続けるには、これらのメンバーでゲートウェイ管理のグループを開始してください。過去のスレッドは上に読み取り専用で表示され、新しいチャットには再生されません。',
+    start: '新しいグループを開始'
   },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES.ja,
   editor: {
@@ -955,8 +955,8 @@ const zh: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES.zh,
   legacyGate: {
     legacyRoom:
-      '这是旧版桌面房间。要与这些成员继续交流，请启动由网关管理的群组；过去的线程以只读方式显示在上方，不会回放到新房间。',
-    start: '启动网关群组'
+      '这是旧版桌面群聊。要与这些成员继续交流，请启动由网关管理的群组；过去的线程以只读方式显示在上方，不会回放到新群聊。',
+    start: '新建群组'
   },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES.zh,
   editor: {
@@ -1386,8 +1386,8 @@ const zhHant: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES['zh-hant'],
   legacyGate: {
     legacyRoom:
-      '這是舊版桌面房間。要與這些成員繼續書寫，請啟動由閘道管理的群組；過去的話題以唯讀方式顯示在上方，不會重播到新房間。',
-    start: '啟動閘道群組'
+      '這是舊版桌面聊天。要與這些成員繼續書寫，請啟動由閘道管理的群組；過去的話題以唯讀方式顯示在上方，不會重播到新聊天。',
+    start: '建立新的群組'
   },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES['zh-hant'],
   editor: {

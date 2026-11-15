@@ -21,10 +21,14 @@ const { openBotCanonicalChat, prepareBotSource } = vi.hoisted(() => ({
 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { pluginSdkMock } = await import('./group-test-utils')
   const base = await pluginSdkMock(host)
 
   return {
+
+    ...actual,
     ...base,
     ackStoredSessionId: vi.fn(),
     haptic: vi.fn(),

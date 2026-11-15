@@ -1127,13 +1127,15 @@ function CanonicalRoomView({
           readError={readError}
           unavailable={Boolean(state && !driver)}
         />
-        {/* Room-kind badge + roster + member management (fork canon: gateway-native seat
-          list via `groups.update_members`; the badge flags legacy Desktop rooms). */}
-        <div className="flex flex-wrap items-center gap-3 px-4 pb-2">
+        {/* Room-kind badge + member management (fork canon: gateway-native seat list
+          via `groups.update_members`). The room's member DISPLAY is upstream's roster;
+          the fork's seat manage entry rides beside it, plus the kind badge. */}
+        <div
+          className="flex flex-wrap items-center gap-3 px-4 pb-2"
+        >
           <span className="shrink-0 rounded-full border border-(--ui-stroke-secondary) px-1.5 text-[0.6rem] text-(--ui-text-tertiary)">
             {labels.roomKindGateway}
           </span>
-          <CanonicalGroupRoster label={labels.members} members={members} />
           <Tip label={labels.manageMembers}>
             <Button aria-label={labels.manageMembers} disabled={busy || !state} onClick={() => setMembersOpen(true)}>
               <Codicon name="organization" />
@@ -1267,15 +1269,13 @@ function CanonicalRoomView({
             {sendHint}
           </p>
         )}
-        {focusMode && (
-          // Thread mode (fork UX, deposit-spec 19/10): the room's live composer stays; the
-          // New Thread launcher rides beside it instead of owning the bottom bar.
-          <div className="px-4 pb-1">
-            <Button onClick={startNewThread} size="sm" type="button" variant="text">
-              {labels.newThread}
-            </Button>
-          </div>
-        )}
+        <div className="px-4 pb-1">
+          {/* New Thread launcher (fork UX): a persistent entry point; in thread mode
+              it stays the room's only thread entry, never a live composer. */}
+          <Button onClick={startNewThread} size="sm" type="button" variant="text">
+            {labels.newThread}
+          </Button>
+        </div>
         <div className="px-4">
           <RoomComposer
             above={

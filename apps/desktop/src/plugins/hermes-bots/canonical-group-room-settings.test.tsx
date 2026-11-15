@@ -4,18 +4,23 @@ import { afterEach, expect, it, vi } from 'vitest'
 
 const request = vi.hoisted(() => vi.fn())
 
-vi.mock('@hermes/plugin-sdk', () => ({
-  Button: (props: ComponentProps<'button'>) => <button {...props} />,
-  Dialog: ({ children, open }: { children: ReactNode; open: boolean }) => (open ? <div>{children}</div> : null),
-  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
-  host: {},
-  Input: (props: ComponentProps<'input'>) => <input {...props} />,
-  randomUuid: () => 'uuid-1',
-  Textarea: (props: ComponentProps<'textarea'>) => <textarea {...props} />
-}))
+vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
+  return {
+    ...actual,
+    Button: (props: ComponentProps<'button'>) => <button {...props} />,
+    Dialog: ({ children, open }: { children: ReactNode; open: boolean }) => (open ? <div>{children}</div> : null),
+    DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+    host: {},
+    Input: (props: ComponentProps<'input'>) => <input {...props} />,
+    randomUuid: () => 'uuid-1',
+    Textarea: (props: ComponentProps<'textarea'>) => <textarea {...props} />
+  }
+})
 vi.mock('./canonical-groups', async importOriginal => ({
   ...(await importOriginal<object>()),
   canonicalGroupRequest: request

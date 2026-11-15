@@ -732,10 +732,10 @@ it('describes one membership storage for every selection', async () => {
   const dialog = await openDialog()
   fireEvent.click(box(dialog.rows[0]))
   fireEvent.click(box(dialog.rows[1]))
-  expect(screen.getByText('Pick 2–6 bots. Membership is saved with this group chat on its computer.')).toBeTruthy()
+  expect(screen.getByText('Pick 2–16 bots. Membership is saved with this group chat on its computer.')).toBeTruthy()
   fireEvent.click(box(dialog.rows[1]))
   fireEvent.click(box(dialog.baseElement.querySelector('[data-bot-face="coder"]')!))
-  expect(screen.getByText('Pick 2–6 bots. Membership is saved with this group chat on its computer.')).toBeTruthy()
+  expect(screen.getByText('Pick 2–16 bots. Membership is saved with this group chat on its computer.')).toBeTruthy()
 })
 
 it.each([

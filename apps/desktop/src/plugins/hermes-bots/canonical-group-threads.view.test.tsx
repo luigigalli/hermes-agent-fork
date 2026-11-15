@@ -11,6 +11,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 // the discussion driver stamps member replies).
 const request = vi.hoisted(() => vi.fn())
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
   const { en } = await import('@/i18n/en')
   const { CANONICAL_GROUP_LOCALES } = await import('./canonical-group-locales')
@@ -18,6 +20,8 @@ vi.mock('@hermes/plugin-sdk', async () => {
   const Panel = ({ children }: { children?: ReactNode }) => <div>{children}</div>
 
   return {
+
+    ...actual,
     ...base,
     MessageTextContent: ({ text }: { text: string }) => <div data-testid="markdown">{text}</div>,
     useI18n: () => ({ locale: 'en', t: en }),
@@ -82,7 +86,7 @@ function journalMock(logStore: { log: LogEvent[] }) {
         }
       ]
 
-      return { accepted: true }
+      return { event: {}, client_event_id: params.event_id, accepted: true }
     }
 
     if (method === 'groups.stop') {

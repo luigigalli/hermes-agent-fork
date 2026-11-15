@@ -3,9 +3,13 @@ import type { ComponentProps } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
 
   return {
+
+    ...actual,
     ...(await pluginSdkMock(createGroupGateway().host)),
     Button: (p: ComponentProps<'button'>) => <button {...p} />
   }

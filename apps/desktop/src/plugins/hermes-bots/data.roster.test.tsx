@@ -50,10 +50,14 @@ const { hostMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { atom } = await import('nanostores')
   const { QueryClient: Client, useQuery } = await import('@tanstack/react-query')
 
   return {
+
+    ...actual,
     atom,
     host: hostMock,
     queryClient: new Client({ defaultOptions: { queries: { retry: false } } }),

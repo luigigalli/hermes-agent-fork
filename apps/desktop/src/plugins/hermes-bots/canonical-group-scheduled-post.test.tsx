@@ -3,6 +3,8 @@ import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { Streamdown } = await import('streamdown')
   const { en } = await import('@/i18n/en')
   const { relativeTime } = await import('@/lib/time')
@@ -14,6 +16,8 @@ vi.mock('@hermes/plugin-sdk', async () => {
   )
 
   return {
+
+    ...actual,
     ...(await (await import('./group-test-utils')).pluginSdkMock({})),
     MessageTextContent,
     Streamdown,

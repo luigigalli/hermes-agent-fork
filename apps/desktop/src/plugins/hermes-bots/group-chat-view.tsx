@@ -58,6 +58,7 @@ import {
   resolveCanonicalGroup
 } from './canonical-group-registry'
 import { CanonicalGroupWorkspace } from './canonical-group-workspace'
+import { CanonicalGroupLegacyHistory } from './canonical-group-legacy-history'
 import type { GroupCreationIntent } from './canonical-groups'
 import {
   canonicalGroupCreateError,
@@ -973,7 +974,9 @@ function GroupExecutionGate(props: GroupChatWorkspaceProps) {
         </Button>
       )}
       {canonicalGroupKeyRoute(props.group, props.origin ?? 'name') === null && (
-        <GateEarlierMessages labels={b.canonical} room={classicRoom} />
+        // Fork custody (deposit-spec 19/10): the durable archive rides the legacy gate as a
+        // read-only threads pane instead of upstream's flat earlier-messages row.
+        <CanonicalGroupLegacyHistory room={classicRoom} />
       )}
     </div>
   )

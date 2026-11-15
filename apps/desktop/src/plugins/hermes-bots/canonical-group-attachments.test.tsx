@@ -6,9 +6,13 @@ import { expectDownloaded, observeDownloads } from './canonical-download-test-ut
 
 const request = vi.hoisted(() => vi.fn())
 vi.mock('@hermes/plugin-sdk', async () => {
+  const actual = await vi.importActual('@hermes/plugin-sdk')
+
   const { captureGroupRequests } = await import('./canonical-group-contract-test-utils')
 
   return {
+
+    ...actual,
     ...(await (await import('./group-test-utils')).pluginSdkMock({})),
     randomUuid: (await import('@hermes/shared')).randomUuid,
     host: { requestProfile: captureGroupRequests(request).request },
