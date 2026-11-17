@@ -21,7 +21,7 @@ method = _registry.method
 #: Wire order of ``groups.capabilities.methods``; every one runs on the RPC pool.
 _METHODS = (
     "groups.capabilities", "groups.list", "groups.create", "groups.state", "groups.send",
-    "groups.rename", "groups.context", "groups.log", "groups.disband", "groups.replicate", "groups.replica_state",
+    "groups.update_members", "groups.rename", "groups.context", "groups.log", "groups.disband", "groups.replicate", "groups.replica_state",
     "groups.promote", "groups.demote", "groups.stop", "groups.continue", "groups.retry", "groups.approve",
     "groups.peer.invite", "groups.peer.revoke", "groups.peer.register", "groups.attachment.upload",
     "groups.attachment.download")
@@ -445,6 +445,17 @@ def _(rid, params: dict, service) -> dict:
     """Create a hosted room idempotently; authority is this gateway's stable install identity."""
     room = service.create_room(
         room_id=params.get("room_id"), name=params.get("name"), members=params.get("members"))
+    return _ok(rid, {"room": room})
+
+
+@_room_method(
+    "groups.update_members", code=5117, room_code=4117, service_code=4123,
+    service_message=_WORKER_UNAVAILABLE)
+def _(rid, params: dict, service) -> dict:
+    """Replace one live hosted room's member roster atomically with its replay event."""
+    room = service.update_room_members(
+        room_id=params.get("room_id"), event_id=params.get("event_id"),
+        members=params.get("members"))
     return _ok(rid, {"room": room})
 
 

@@ -188,3 +188,7 @@ it('classifies both gateway surfaces by their driver and offers only the methods
   expect(offersGroupMethod(groupAdvertisedMethods({ driver: true }), 'groups.discard')).toBe(true)
   expect(offersGroupMethod(undefined, 'groups.discard')).toBe(false)
 })
+
+// Re-land 3c6605ab59: the probe/gate sites pass the SDK's native 4th timeoutMs argument
+// (see canonical-group-capabilities.ts; the gates suite pins the probe deadline there).
+// The helper keeps upstream's 3-arg arity.

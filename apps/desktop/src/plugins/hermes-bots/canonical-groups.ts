@@ -62,6 +62,11 @@ function requireRoute(route: CanonicalGroupRoute): void {
   }
 }
 
+/** Gateway RPC for a canonical group. Re-land of 3c6605ab59 on the v0.23.2 architecture: the
+ * upstream sdk requestProfile (sdk/profile-request.ts) accepts a native 4th timeoutMs argument;
+ * the 8s deadline is passed explicitly by the probe/gate sites (canonical-group-capabilities.ts)
+ * covering the proven wedge class (kanban t_5405440d); non-probe flows keep upstream's
+ * 3-argument arity so its exact-arity test contracts stay intact. */
 export async function canonicalGroupRequest<T>(
   route: CanonicalGroupRoute,
   method: string,
@@ -382,6 +387,40 @@ export async function createCanonicalGroup(
     () => ({ room_id: randomUuid(), name: requireGroupName(sentName(name)), members: checked.roster }))
 
   return { binding: { ...route, roomId: room.room_id }, room }
+}
+
+/** The seat cap in one place: = group-chat's GROUP_CHAT_MAX_MEMBERS (6), kept local so this
+ * module's import graph does not pull group-chat's `atom` infront of every sdk-mocked test. */
+const CANONICAL_GROUP_MEMBER_CAP = 6
+
+/** Replace one live canonical room's seat list (re-land ef9cf25e04 su architettura v0.23.2:
+ * the fleet's picker canon counts seats on GROUP_CHAT_MAX_MEMBERS; the gateway's own roster
+ * rule stays the server-side enforcement and every removed seat keeps its committed history).
+ * Same-connection seats only (no peer pinning on a seat swap); rejections ride
+ * canonicalGroupRoster. */
+export async function updateCanonicalGroupMembers(
+  binding: CanonicalGroupBinding,
+  members: GroupMember[]
+): Promise<CanonicalRoom> {
+  requireRoute(binding)
+
+  if (members.length < 2 || members.length > CANONICAL_GROUP_MEMBER_CAP) {
+    throw new Error(`A canonical group needs between 2 and ${CANONICAL_GROUP_MEMBER_CAP} members`)  // = GROUP_CHAT_MAX_MEMBERS canon
+  }
+
+  const checked = canonicalGroupRoster(binding, members)
+
+  if ('problem' in checked) {
+    throw new Error(checked.problem)
+  }
+
+  const { room } = await canonicalGroupRequest<{ room: CanonicalRoom }>(binding, 'groups.update_members', {
+    room_id: binding.roomId,
+    event_id: randomUuid(),
+    members: checked.roster
+  })
+
+  return room
 }
 
 interface CreateErrorLabels {

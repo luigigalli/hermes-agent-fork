@@ -82,7 +82,7 @@ export function useGroupMethods(route: { connectionId: string; profile: string }
     if (answered || !visible || (onForeground(connectionId) && (host.state?.gateway?.get() ?? 'open') !== 'open')) {return}
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
-    void canonicalGroupRequest<unknown>(route, 'groups.capabilities').then(
+    void canonicalGroupRequest<unknown>(route, 'groups.capabilities', {}, 8000).then(
       value => { if (!cancelled) {setAnswer({ opening, methods: groupAdvertisedMethods(value) })} },
       () => { if (!cancelled) {timer = setTimeout(() => setAttempt(value => value + 1), 2000)} }
     )
@@ -159,9 +159,27 @@ export function useGroupCapability(active: boolean, attempt = 0) {
       }
     }
 
-    void canonicalGroupRequest<unknown>(route, 'groups.capabilities').then(
+    void canonicalGroupRequest<unknown>(route, 'groups.capabilities', {}, 8000).then(
       result => settle(result, false),
-      () => settle(null, true)
+      error => {
+        // A rejected probe must never read as muteness: checking has no text, so wedge-class
+        // rejections (stalled dial, network garbage) surface through this notify with their
+        // cause, and settle() falls to the visible outage state. Typed RPC refusals (a server
+        // without the group surface, -32601 and friends) already classify as `unavailable` on
+        // screen and stay silent, both surfaces' contract.
+        const typed = typeof (error as { code?: unknown } | null | undefined)?.code === 'number'
+
+        if (!typed) {
+          host.notify({
+            kind: 'error',
+            message:
+              error instanceof Error && error.message
+                ? error.message
+                : String(error || 'groups.capabilities probe failed')
+          })
+        }
+        settle(null, true)
+      }
     )
 
     return () => { cancelled = true }
@@ -315,7 +333,9 @@ export async function revalidateGroupCreation(route: { connectionId: string; pro
   const sourceCurrent = groupCreationSource(route, capability?.activationEpoch ?? -1)
 
   if (!capability || capability.source !== source || !sourceCurrent()) {throw new Error(unavailable)}
-  const snapshot = await canonicalGroupRequest<unknown>(route, 'groups.capabilities')
+  // Explicit deadline: the gate must fail closed (visible error, creating.current released)
+  // rather than wedge the first click on a dial that never answers.
+  const snapshot = await canonicalGroupRequest<unknown>(route, 'groups.capabilities', {}, 8000)
 
   if (groupExecutionMode(snapshot) !== capability.mode) {throw new Error(unavailable)}
   const targets = groupSeatsPeers(snapshot) ? await readPeerTargets(selection, route.connectionId) : new Map<string, PeerTargetState>()
