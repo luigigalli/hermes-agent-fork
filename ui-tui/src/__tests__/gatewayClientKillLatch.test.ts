@@ -42,10 +42,7 @@ const { FakeWebSocket } = vi.hoisted(() => {
       const entries = this.listeners.get(type)
 
       if (entries) {
-        this.listeners.set(
-          type,
-          entries.filter(entry => entry !== callback)
-        )
+        this.listeners.set(type, entries.filter(entry => entry !== callback))
       }
     }
 

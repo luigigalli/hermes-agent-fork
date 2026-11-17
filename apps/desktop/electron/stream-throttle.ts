@@ -194,7 +194,6 @@ export function createStreamThrottle(
         windowHolds.delete(win)
         armRethrottleIfIdle()
       })
-
       for (const event of ['show', 'hide', 'minimize', 'restore']) {
         win.on?.(event, () => apply(win))
       }

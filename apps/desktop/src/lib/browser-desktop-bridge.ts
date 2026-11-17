@@ -3,6 +3,7 @@ import { externalUrlTarget, LOCAL_CONNECTION_ID } from '@hermes/shared'
 import type { HermesApiRequest } from '@/global'
 import { BROWSER_BRIDGE_STUBS } from '@/lib/browser-bridge-stubs'
 import { createBrowserClipboardBridge } from '@/lib/browser-clipboard'
+import { createBrowserCloudBridge } from '@/lib/browser-cloud'
 import { createBrowserConnectionBridge } from '@/lib/browser-connection'
 import { createBrowserDesktopPluginsBridge } from '@/lib/browser-desktop-plugins'
 import { createBrowserFilesBridge } from '@/lib/browser-files'
@@ -60,9 +61,7 @@ export function installBrowserDesktopBridge(): boolean {
   // This machine's saved gateway connections (the list native Desktop keeps): each other gateway's
   // requests ride `/api/relay/<id>` on this origin (browser-saved-connections.ts). A host that does
   // not serve the list (the standalone dashboard) reaches only its own origin.
-  const relays: BrowserSavedConnections | null = savedConnectionsServed()
-    ? createBrowserSavedConnections({ api, bootstrap })
-    : null
+  const relays: BrowserSavedConnections | null = savedConnectionsServed() ? createBrowserSavedConnections({ api, bootstrap }) : null
   const bootstrapFor = (connectionId?: null | string) => relays?.bootstrapFor(connectionId) ?? bootstrap
   const activeConnectionId = () => $connection.get()?.connectionId ?? LOCAL_CONNECTION_ID
 
@@ -150,6 +149,7 @@ export function installBrowserDesktopBridge(): boolean {
 
   const bridge: Window['hermesDesktop'] = {
     ...BROWSER_BRIDGE_STUBS,
+    cloud: createBrowserCloudBridge({ api, relays }),
     ...createBrowserClipboardBridge({ saveBuffer: uploads.saveImageBuffer }),
     ...createBrowserConnectionBridge({ api, bootstrap, relays }),
     ...(relays ? { connections: relays.connections } : {}),

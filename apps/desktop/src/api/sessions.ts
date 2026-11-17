@@ -10,11 +10,7 @@ import type {
   SessionSearchResponse
 } from '@/types/hermes'
 
-import {
-  createSessionMutationClient,
-  type SessionMutationIdentity,
-  type SessionMutationSnapshot
-} from '../../../shared/src/session-http-mutations'
+import { createSessionMutationClient, type SessionMutationIdentity, type SessionMutationSnapshot } from '../../../shared/src/session-http-mutations'
 
 import {
   ambientOwnerConnectionId,
@@ -59,6 +55,17 @@ function sessionScoped(scope?: ProfileScope): { connectionId?: string; profile?:
  */
 function sessionWriteProfile(profile?: null | string): string | undefined {
   return String(profile ?? '').trim() || getApiRequestProfile() || undefined
+}
+
+/** Request scope for a list read that names ONE profile: the named profile
+ *  rides the request too, so a Bot Mode read of a bot other than the ambient
+ *  profile never pairs `?profile=<ambient>` with the bot's selector (the
+ *  gateway's grant check refuses the pair: 403 profile_scope_mismatch). */
+function listProfileScoped(profile: string): { profile?: string } {
+  const { priority: _priority, ...ambient } = profileScoped()
+  const named = String(profile || '').trim()
+
+  return named && named !== 'all' && named !== ambient.profile ? { ...ambient, profile: named } : ambient
 }
 
 function sessionScopeQuery(scope?: ProfileScope): string {
@@ -155,7 +162,7 @@ export async function listAllProfileSessions(
     : ''
 
   const result = await hermesApi<PaginatedSessions>({
-    ...profileScoped(),
+    ...listProfileScoped(profile),
     path:
       `/api/profiles/sessions?limit=${limit}&offset=${Math.max(0, offset)}&min_messages=${Math.max(0, minMessages)}` +
       `&archived=${archived}&order=${order}&profile=${encodeURIComponent(profile)}${sourceParam}${excludeParam}`,
@@ -340,7 +347,7 @@ export async function listSidebarSessions(req: SidebarSessionsRequest): Promise<
 
   try {
     result = await hermesApi<SidebarSessionsResponse>({
-      ...profileScoped(),
+      ...listProfileScoped(req.recentsProfile),
       path: `/api/profiles/sessions/sidebar?${params.toString()}`,
       timeoutMs: SESSION_LIST_REQUEST_TIMEOUT_MS
     })
@@ -388,39 +395,21 @@ class MissingMutationSnapshotRoute extends Error {}
  *  verdict on the read, before any write was attempted, selects it; a session/profile 404,
  *  refusal, conflict, timeout or failed write keeps the canonical CAS path and its retained
  *  identity. */
-export function mutateSessionFenced<T>(
-  key: string,
-  read: () => Promise<SessionMutationSnapshot>,
-  send: (identity: Partial<SessionMutationIdentity>) => Promise<T>
-): Promise<T> {
-  return runSessionMutation(
-    key,
-    () =>
-      read().catch(error => {
-        // The prepared read is shared by equal concurrent edits; its verdict must
-        // travel with that rejection, rather than one caller's local closure.
-        if (isUnroutedRestPath(error)) {
-          throw new MissingMutationSnapshotRoute(String(error), { cause: error })
-        }
-
-        throw error
-      }),
-    send
-  ).catch(error => {
-    if (!(error instanceof MissingMutationSnapshotRoute)) {
-      throw error
-    }
+export function mutateSessionFenced<T>(key: string, read: () => Promise<SessionMutationSnapshot>,
+  send: (identity: Partial<SessionMutationIdentity>) => Promise<T>): Promise<T> {
+  return runSessionMutation(key, () => read().catch(error => {
+    // The prepared read is shared by equal concurrent edits; its verdict must
+    // travel with that rejection, rather than one caller's local closure.
+    if (isUnroutedRestPath(error)) { throw new MissingMutationSnapshotRoute(String(error), { cause: error }) }
+    throw error
+  }), send).catch(error => {
+    if (!(error instanceof MissingMutationSnapshotRoute)) { throw error }
 
     return send({})
   })
 }
 
-function mutateSessionHttp<T>(
-  id: string,
-  method: 'PATCH' | 'DELETE',
-  payload: Record<string, unknown>,
-  profile?: ProfileScope
-): Promise<T> {
+function mutateSessionHttp<T>(id: string, method: 'PATCH' | 'DELETE', payload: Record<string, unknown>, profile?: ProfileScope): Promise<T> {
   // Null is the window's v1 route (its primary, local or remote); defaulting it to
   // the registry's 'local' source would pin a remote primary's edits to this machine.
   const scope = { connectionId: getApiRequestConnection(), ...sessionScoped(profile) }
@@ -433,35 +422,20 @@ function mutateSessionHttp<T>(
     if (method === 'DELETE') {
       const params = new URLSearchParams(query)
 
-      for (const [name, value] of Object.entries(identity)) {
-        params.set(name, String(value))
-      }
+      for (const [name, value] of Object.entries(identity)) { params.set(name, String(value)) }
 
       return hermesApi<T>({ ...scope, path: params.size ? `${path}?${params}` : path, method })
     }
 
-    return hermesApi<T>({
-      ...scope,
-      path,
-      method,
-      body: { ...payload, ...identity, ...(scope.profile ? { profile: scope.profile } : {}) }
-    })
+    return hermesApi<T>({ ...scope, path, method,
+      body: { ...payload, ...identity, ...(scope.profile ? { profile: scope.profile } : {}) } })
   }
 
-  return mutateSessionFenced(
-    key,
-    () => hermesApi<SessionMutationSnapshot>({ ...scope, path: `${path}/mutation-snapshot${suffix}` }),
-    send
-  )
+  return mutateSessionFenced(key, () => hermesApi<SessionMutationSnapshot>({ ...scope, path: `${path}/mutation-snapshot${suffix}` }), send)
 }
 
 export function setSessionArchived(id: string, archived: boolean, profile?: string | null): Promise<{ ok: boolean }> {
-  return mutateSessionHttp(
-    id,
-    'PATCH',
-    { archived, ...(archived ? { pinned: false } : {}) },
-    sessionWriteProfile(profile)
-  )
+  return mutateSessionHttp(id, 'PATCH', { archived, ...(archived ? { pinned: false } : {}) }, sessionWriteProfile(profile))
 }
 
 export function setSessionPinnedRemote(id: string, pinned: boolean, profile?: string | null): Promise<{ ok: boolean }> {
@@ -756,10 +730,6 @@ export function deleteSession(id: string, profile?: ProfileScope): Promise<{ ok:
   return mutateSessionHttp(id, 'DELETE', {}, profile)
 }
 
-export function renameSession(
-  id: string,
-  title: string,
-  profile?: string | null
-): Promise<{ ok: boolean; title: string }> {
+export function renameSession(id: string, title: string, profile?: string | null): Promise<{ ok: boolean; title: string }> {
   return mutateSessionHttp(id, 'PATCH', { title }, sessionWriteProfile(profile))
 }

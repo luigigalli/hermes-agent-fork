@@ -345,6 +345,9 @@ declare global {
       readClipboard: () => Promise<string>
       saveGatewayFile?: (payload: {
         connectionId?: null | string
+        /** A route that serves this file from the host that wrote it (an allow-listed
+         *  `/api/ops/...` download), read instead of the workspace's `/api/fs/download`. */
+        downloadPath?: string
         path: string
         profile?: null | string
         sessionId?: string
@@ -660,10 +663,7 @@ declare global {
       }) => Promise<PreviewSigninsResult>
       // P2-7: the per-profile imported-sign-ins record + cookie jar live in Electron main (userData),
       // so the renderer's local profile rename/delete flow signals main to move/clear them.
-      migratePreviewSigninsForProfile?: (request: {
-        oldProfile: string
-        newProfile: string
-      }) => Promise<{ ok: boolean }>
+      migratePreviewSigninsForProfile?: (request: { oldProfile: string; newProfile: string }) => Promise<{ ok: boolean }>
       dropPreviewSigninsForProfile?: (request: { profile: string }) => Promise<{ ok: boolean }>
       setActiveConnectionRoute?: (
         route: {
@@ -680,7 +680,12 @@ declare global {
         callback: (payload: { kind: string; name: string; params: Record<string, string> }) => void
       ) => () => void
       signalDeepLinkReady?: () => Promise<{ ok: boolean }>
-      probePluginRepo?: (payload: { identifier?: string; repo?: string }) => Promise<{
+      probePluginRepo?: (payload: {
+        identifier?: string
+        repo?: string
+        /** A catalog pick's pin: the repository is read at that commit, not its default branch. */
+        ref?: string
+      }) => Promise<{
         ok: boolean
         agent: boolean
         desktop: boolean
@@ -1563,6 +1568,8 @@ export interface DesktopCloudAgentSignInResult {
   baseUrl: string
   // Whether the agent's gateway session cookie landed (silent cascade done).
   connected: boolean
+  // The saved connection the sign-in authenticated, when the sign-in itself saved one (Webapp).
+  connectionId?: string
 }
 
 export interface DesktopBootProgress {

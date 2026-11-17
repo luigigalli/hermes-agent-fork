@@ -1,3 +1,4 @@
+import type { ProfilesCreateResult } from '@hermes/plugin-sdk'
 import {
   Badge,
   Button,
@@ -63,7 +64,12 @@ import { $botMeta, $lastRoster, botHandle, botRosterKey, filterBots, ROSTER_KEY,
 import { labeled, ResizableFrame } from './dialog-parts'
 import { GROUP_CHAT_MAX_MEMBERS, uniqueGroupChatName } from './group-chat'
 import { memberMachineOffline, setGroupMembership } from './group-chat-view-members'
-import { botGroups, durableGroupChatMembers, knownGroups, liveGroupChatNames } from './group-membership'
+import {
+  botGroups,
+  durableGroupChatMembers,
+  knownGroups,
+  liveGroupChatNames
+} from './group-membership'
 import { useBots } from './i18n'
 import { botProfileIdentity, displayName } from './labels'
 import { McpSetupButton } from './mcp-setup'
@@ -158,11 +164,7 @@ function capabilityPayload(
  *  default backend, no gateway switch) or '' for the active gateway. */
 function requestOnTarget<T>(target: string, method: string, params: Record<string, unknown> = {}): Promise<T> {
   return target
-    ? host.requestProfile(
-        { connectionId: target, mode: 'remote', profile: 'default', targetProfile: 'default' },
-        method,
-        params
-      )
+    ? host.requestProfile({ connectionId: target, mode: 'remote', profile: 'default', targetProfile: 'default' }, method, params)
     : host.request(method, params)
 }
 
@@ -205,15 +207,7 @@ function useCapabilitiesDraft(ready: boolean, slug: string, draft: null | string
 
 /** New Bot's live Capabilities tab: a hint until the name is usable, a spinner
  *  until its draft profile exists, then the real surface pinned to that draft. */
-function CapabilitiesTab({
-  connection,
-  draft,
-  hint
-}: {
-  connection?: string
-  draft: null | string
-  hint: null | string
-}) {
+function CapabilitiesTab({ connection, draft, hint }: { connection?: string; draft: null | string; hint: null | string }) {
   const b = useBots()
   const note = 'px-2 py-3 text-center text-xs text-(--ui-text-tertiary)'
 
@@ -260,17 +254,47 @@ function slugTaken(roster: RosterRow[], slug: string, target: string, draft: nul
  *  (`draftTargetRef`, recorded with it): the "Create on" picker may point
  *  elsewhere by then, and a same-named bot there is not the draft. Each discard,
  *  and the dialog unmounting, bumps `draftGenRef` so an in-flight create
- *  deletes its own draft and configures nothing. */
+ *  deletes its own draft and configures nothing. `draftReceiptRef` is what
+ *  the flight that recorded the draft learned: the connection it was created
+ *  on and its creation warnings. Every discard drops it, and a submit
+ *  publishes the warnings only while the receipt is still the recorded one. */
+interface DraftReceipt {
+  owner: string
+  warning: null | { message: string; title: string }
+}
+
+/** A creation warning names the profile and the machine it was created on
+ *  (no machine on a legacy gateway without connection ids: never guess 'local'). */
+function creationWarningTitle(profile: string, connectionId: string, connections: ConnectionRow[] | null) {
+  const machine = (connections || []).find(c => c.id === connectionId)?.label
+
+  return connectionId ? `${profile} — ${machine ? `${machine} (${connectionId})` : connectionId}` : profile
+}
+
+/** The bot's live roster row on the connection it was created on (what Edit
+ *  Profile gets from the roster). Until the roster lists it: `fallback` while
+ *  that connection is still the active one, else a row pinned to it, so a
+ *  same-named bot on the gateway switched to is never the one edited. */
+function liveRosterRow(name: string, connectionId: string, fallback: RosterRow): RosterRow {
+  const key = botRosterKey({ connectionId: connectionId || undefined, name })
+  const live = $lastRoster.get().find(row => botRosterKey(row) === key)
+  const active = String(host.state?.connectionId?.get?.() || '').trim()
+
+  return live ?? (connectionId && connectionId !== active ? { ...fallback, connectionId, sourceScoped: true } : fallback)
+}
+
 function useDraftProfile(
   createdRef: { current: null | string },
   flightRef: { current: Promise<null | string> | null }
 ) {
   const draftGenRef = useRef(0)
   const draftTargetRef = useRef('')
+  const draftReceiptRef = useRef<DraftReceipt | null>(null)
 
   const discardDraft = () => {
     const draft = createdRef.current
     draftGenRef.current += 1
+    draftReceiptRef.current = null
     createdRef.current = flightRef.current = null
 
     if (draft) {
@@ -285,7 +309,7 @@ function useDraftProfile(
     []
   )
 
-  return { discardDraft, draftGenRef, draftTargetRef }
+  return { discardDraft, draftGenRef, draftTargetRef, draftReceiptRef }
 }
 
 export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: CreateAgentDialogProps) {
@@ -301,7 +325,7 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
   // button + MCP setup buttons). Distinct from createdRef on purpose:
   // createdRef must stay a slug string for its sibling consumers.
   const flightRef = useRef<Promise<null | string> | null>(null)
-  const { discardDraft, draftGenRef, draftTargetRef } = useDraftProfile(createdRef, flightRef)
+  const { discardDraft, draftGenRef, draftTargetRef, draftReceiptRef } = useDraftProfile(createdRef, flightRef)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   // Default shapes mode: deterministic blob face drawn from the agent's name
@@ -418,8 +442,7 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
     setTargetConnection('')
     setBusy(false)
     setError(null)
-    createdRef.current = null
-    flightRef.current = null
+    createdRef.current = flightRef.current = draftReceiptRef.current = null
   }
 
   // Capability catalog for the tabs: the profile doesn't exist yet, so show
@@ -524,7 +547,7 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
     const target = createTarget
 
     const flight = singleFlight(flightRef, async () => {
-      await requestForTarget('profiles.create', {
+      const created = await requestForTarget<ProfilesCreateResult>('profiles.create', {
         name: slug,
         description: descriptionText,
         // Clone sources are profiles of the TARGET backend. The picker's
@@ -533,9 +556,10 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
         // the remote box doesn't have.
         clone_from: cloneFrom === '__none__' ? null : remoteTarget ? 'default' : cloneFrom,
         no_skills: noSkills,
-        // Shared (not copied) auth keeps ONE OAuth/token pool with the main
-        // profile, so refreshes can't invalidate each other. Older gateways
-        // ignore the param and copy — still functional, just forked.
+        // Shared (not copied) auth keeps ONE OAuth/token pool with the default
+        // profile, so refreshes can't invalidate each other. From a named launch
+        // profile the gateway copies its logins instead (single-use OAuth still
+        // read from the default profile). Older gateways ignore the param and copy.
         share_auth: shareAuth,
         soul: composeSoul({
           name: slug,
@@ -567,6 +591,13 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
 
       createdRef.current = slug
       draftTargetRef.current = target
+      const owner = target || activeConnectionId
+      draftReceiptRef.current = {
+        owner,
+        warning: created?.warnings?.length
+          ? { title: creationWarningTitle(slug, owner, connections), message: created.warnings.join('\n') }
+          : null
+      }
 
       // Apply capability picks from the Advanced tabs (best-effort; the
       // profile exists either way and Edit Profile can finish the job).
@@ -660,6 +691,10 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
         return
       }
 
+      // Kept even if the dialog closes during readiness; a discard drops it.
+      const receipt = draftReceiptRef.current
+      const createdOn = receipt?.owner ?? activeConnectionId
+
       // The intro turn is a real model call. Probe the new profile's route
       // first so a bot whose machine has no usable credential lands as
       // "created, needs a model" instead of a doomed "No LLM provider" turn.
@@ -679,15 +714,27 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
         ...(remoteTarget ? { connectionId: targetConnection, remoteSource: true } : {})
       }
 
+      // Not for a draft a target change discarded while readiness ran.
+      if (receipt?.warning && draftReceiptRef.current === receipt) {
+        host.notify({ kind: 'warning', title: receipt.warning.title, message: receipt.warning.message, persistent: true })
+      }
+
+      // Persistent: opening the chat clears ordinary notices.
       host.notify(
         needsModel
           ? {
               kind: 'warning',
               title: createdMessage,
               message: b.editor.needsModel,
+              persistent: true,
               detail: readiness?.error,
               ...(!remoteTarget && onConfigureModel
-                ? { action: { label: b.editor.configureModel, onClick: () => onConfigureModel(bot) } }
+                ? {
+                    action: {
+                      label: b.editor.configureModel,
+                      onClick: () => onConfigureModel(liveRosterRow(slugCreated, createdOn, bot))
+                    }
+                  }
                 : {})
             }
           : { kind: 'success', message: createdMessage }
@@ -1179,15 +1226,7 @@ export function GroupDialog({ bot, onClose, onCreated }: GroupDialogProps) {
   const [creating, setCreating] = useState<null | string>(null)
 
   if (creating !== null) {
-    return (
-      <CreateGroupChatDialog
-        onClose={onClose}
-        onCreated={onCreated}
-        open
-        roster={roster}
-        seed={{ bots: [row], name: creating }}
-      />
-    )
+    return <CreateGroupChatDialog onClose={onClose} onCreated={onCreated} open roster={roster} seed={{ bots: [row], name: creating }} />
   }
 
   const setMembership = async (group: string, enabled: boolean) => {
@@ -1199,10 +1238,7 @@ export function GroupDialog({ bot, onClose, onCreated }: GroupDialogProps) {
       return false
     }
 
-    host.notify({
-      kind: 'info',
-      message: enabled ? b.group.memberAdded(botName, group) : b.group.memberRemoved(botName, group)
-    })
+    host.notify({ kind: 'info', message: enabled ? b.group.memberAdded(botName, group) : b.group.memberRemoved(botName, group) })
 
     return true
   }
@@ -1320,32 +1356,17 @@ function GroupPlanNote({ connectionId, plan, owner, selected }: GroupPlanNotePro
   const local = (plan.connectionId ?? connectionId) === 'local'
 
   // The dialog's status line already says the owner can't run group chats right now.
-  if (engine === 'gateway' || reason === 'owner_unavailable') {
-    return null
-  }
+  if (engine === 'gateway' || reason === 'owner_unavailable') {return null}
 
-  const text =
-    engine === 'gateway-peer'
-      ? b.crossGateway.gatewayPeer(owner, (connectionId ?? '') === 'local')
-      : engine === 'checking'
-        ? b.crossGateway.checkingPeers
-        : engine === 'elsewhere'
-          ? b.crossGateway.selectionElsewhere(connectionName(selected[0]))
-          : groupPlanProblem(reason, where, local, b)
+  const text = engine === 'gateway-peer' ? b.crossGateway.gatewayPeer(owner, (connectionId ?? '') === 'local')
+    : engine === 'checking' ? b.crossGateway.checkingPeers
+      : engine === 'elsewhere' ? b.crossGateway.selectionElsewhere(connectionName(selected[0]))
+        : groupPlanProblem(reason, where, local, b)
 
-  return (
-    <p className="text-xs text-(--ui-text-secondary)" data-group-engine={engine} role="note">
-      {text}
-    </p>
-  )
+  return <p className="text-xs text-(--ui-text-secondary)" data-group-engine={engine} role="note">{text}</p>
 }
 
-function groupPlanProblem(
-  reason: string | undefined,
-  where: string,
-  local: boolean,
-  b: ReturnType<typeof useBots>
-): string {
+function groupPlanProblem(reason: string | undefined, where: string, local: boolean, b: ReturnType<typeof useBots>): string {
   const place = local ? b.bot.thisDevice : where
 
   const words: Record<string, string> = {
@@ -1403,17 +1424,11 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
   const selectableRoster = seatableGroupBots(roster, { connectionId, mode, seatable })
 
   const selected = selectableRoster.filter(bot => checked[botRosterKey(bot)])
-  const targets = usePeerTargets(
-    selectableRoster,
-    connectionId,
-    open && groupSeatsPeers(capability?.snapshot),
-    peerCheck
-  )
+  const targets = usePeerTargets(selectableRoster, connectionId, open && groupSeatsPeers(capability?.snapshot), peerCheck)
   const plan = groupCreationEngine(mode, selected, connectionId, capability?.snapshot, targets)
   const engine = plan.engine
 
-  const owner =
-    selectableRoster.find(bot => botOnConnection(bot, connectionId))?.connectionLabel ||
+  const owner = selectableRoster.find(bot => botOnConnection(bot, connectionId))?.connectionLabel ||
     (connectionId === 'local' ? b.bot.thisDevice : connectionId || b.bot.thisDevice)
 
   const spansConnections = selectableRoster.some(bot => !botOnConnection(bot, connectionId))
@@ -1424,8 +1439,8 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
     ? selected.map(bot => displayName(bot, botRosterMeta(bot, allMeta))).join(', ')
     : b.group.nameLabel
 
-  const canCreate =
-    selected.length >= 2 && Boolean(name.trim() || selected.length) && ['gateway', 'gateway-peer'].includes(engine)
+  const canCreate = selected.length >= 2 && Boolean(name.trim() || selected.length) &&
+    ['gateway', 'gateway-peer'].includes(engine)
 
   const select = (bot: RosterRow, value: boolean) => {
     newDraft()
@@ -1435,90 +1450,57 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
   const creating = useRef(false)
 
   const create = async () => {
-    if (creating.current) {
-      return
-    }
+    if (creating.current) {return}
     creating.current = true
     const submitted = draft.current
     setNotice('')
 
     try {
-      const entered = name.trim().slice(0, 64)
+    const entered = name.trim().slice(0, 64)
 
-      if (selected.length < 2) {
-        return
-      }
+    if (selected.length < 2) {
+      return
+    }
 
-      const route = observedRoute
+    const route = observedRoute
 
-      if (!route) {
-        throw new Error(b.canonical.driverUnavailable)
-      }
+    if (!route) {
+      throw new Error(b.canonical.driverUnavailable)
+    }
 
-      const {
-        plan: fresh,
-        targets: freshTargets,
-        sourceCurrent
-      } = await revalidateGroupCreation(
-        route,
-        capability,
-        source,
-        selected,
-        engine,
-        b.canonical.driverUnavailable
-      ).catch(error => {
+    const { plan: fresh, targets: freshTargets, sourceCurrent } = await revalidateGroupCreation(
+      route, capability, source, selected, engine, b.canonical.driverUnavailable).catch(error => {
         setPeerCheck(value => value + 1)
         throw error
       })
 
-      if (!sourceCurrent()) {
-        throw new Error(b.canonical.driverUnavailable)
-      }
+    if (!sourceCurrent()) {throw new Error(b.canonical.driverUnavailable)}
 
-      const members = durableGroupChatMembers(selected)
+    const members = durableGroupChatMembers(selected)
 
-      // Keyed on the name as entered, blank included: the Bots' names that fill a blank one change
-      // with the roster, so the sent name is chosen once, inside the frozen request.
-      const fallback = placeholder.slice(0, 64)
+    // Keyed on the name as entered, blank included: the Bots' names that fill a blank one change
+    // with the roster, so the sent name is chosen once, inside the frozen request.
+    const fallback = placeholder.slice(0, 64)
 
-      const created =
-        fresh.engine === 'gateway-peer'
-          ? await createGroupAcrossConnections(
-              route,
-              entered,
-              members,
-              freshTargets,
-              intent.current,
-              typed => typed || fallback
-            )
-          : {
-              ...(await createCanonicalGroup(route, entered, members, intent.current, typed =>
-                uniqueGroupChatName(typed || fallback, new Set(liveGroupChatNames()))
-              )),
-              unjoined: []
-            }
+    const created = fresh.engine === 'gateway-peer'
+      ? await createGroupAcrossConnections(route, entered, members, freshTargets, intent.current, typed => typed || fallback)
+      : { ...await createCanonicalGroup(route, entered, members, intent.current,
+        typed => uniqueGroupChatName(typed || fallback, new Set(liveGroupChatNames()))), unjoined: [] }
 
-      // Creation already succeeded; leave it on its owner without adopting a stale result.
-      if (!sourceCurrent()) {
-        return
-      }
-      intent.current = {}
+    // Creation already succeeded; leave it on its owner without adopting a stale result.
+    if (!sourceCurrent()) {return}
+    intent.current = {}
 
-      const key = registerCanonicalGroup(route, created.room, { created: true })
-      refreshGatewayGroupRooms()
-      onClose()
-      onCreated?.(key, 'key')
+    const key = registerCanonicalGroup(route, created.room, { created: true })
+    refreshGatewayGroupRooms()
+    onClose()
+    onCreated?.(key, 'key')
 
-      // The room is made either way; say who is missing so a seat that failed is never silent.
-      if (created.unjoined.length) {
-        host.notify({
-          kind: 'warning',
-          message: b.canonical.createdNotJoined.replace(
-            '{names}',
-            created.unjoined.map(({ member }) => canonicalMemberName(member)).join(', ')
-          )
-        })
-      }
+    // The room is made either way; say who is missing so a seat that failed is never silent.
+    if (created.unjoined.length) {
+      host.notify({ kind: 'warning', message: b.canonical.createdNotJoined
+        .replace('{names}', created.unjoined.map(({ member }) => canonicalMemberName(member)).join(', ')) })
+    }
     } catch (error) {
       const next = canonicalGroupCreateNotice(error, b.canonical)
 
@@ -1527,9 +1509,7 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
       } else if (draft.current === submitted) {
         setNotice(next)
       }
-    } finally {
-      creating.current = false
-    }
+    } finally { creating.current = false }
   }
 
   return (
@@ -1544,17 +1524,12 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{b.group.newTitle}</DialogTitle>
-          <DialogDescription>
-            {b.crossGateway.pickBots(GROUP_CHAT_MAX_MEMBERS)} {b.crossGateway.gatewayMembership}
-          </DialogDescription>
+          <DialogDescription>{b.crossGateway.pickBots(GROUP_CHAT_MAX_MEMBERS)} {b.crossGateway.gatewayMembership}</DialogDescription>
         </DialogHeader>
         {mode === 'unavailable' && <p role="status">{b.canonical.driverUnavailable}</p>}
         <GroupPlanNote connectionId={connectionId} owner={owner} plan={plan} selected={selected} />
-        {engine === 'unavailable' && (
-          <Button onClick={() => setPeerCheck(value => value + 1)} size="sm" variant="ghost">
-            {t.common.retry}
-          </Button>
-        )}
+        {engine === 'unavailable' &&
+          <Button onClick={() => setPeerCheck(value => value + 1)} size="sm" variant="ghost">{t.common.retry}</Button>}
         {/* TODO(bot-mode-types): this search box never takes focus when the dialog
             opens — SearchField accepts no `autoFocus` prop and forwards no extra
             props, so the `autoFocus` that used to sit here was inert. */}
@@ -1576,7 +1551,9 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
                 variant="muted"
               >
                 <Tip label={b.group.removeFromSelection}>
-                  <RowButton onClick={() => select(bot, false)}>
+                  <RowButton
+                    onClick={() => select(bot, false)}
+                  >
                     {displayName(bot, botRosterMeta(bot, allMeta))}
                     <Codicon className="text-[0.6rem]" name="close" />
                   </RowButton>
@@ -1620,8 +1597,7 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
                     </div>
                     {spansConnections && (
                       <Badge className="shrink-0 rounded-full px-1.5 text-[0.625rem]" data-device-badge variant="muted">
-                        {bot.connectionLabel ||
-                          (botOnConnection(bot, connectionId) ? b.bot.thisDevice : bot.connectionId)}
+                        {bot.connectionLabel || (botOnConnection(bot, connectionId) ? b.bot.thisDevice : bot.connectionId)}
                       </Badge>
                     )}
                     <Checkbox
@@ -1658,11 +1634,7 @@ export function CreateGroupChatDialog({ open, roster, onClose, onCreated, seed }
             />
           </form>
         </div>
-        {notice && (
-          <p className="text-xs text-(--ui-text-secondary)" role="status">
-            {notice}
-          </p>
-        )}
+        {notice && <p className="text-xs text-(--ui-text-secondary)" role="status">{notice}</p>}
         <DialogFooter>
           <Button onClick={onClose} variant="secondary">
             {t.common.cancel}

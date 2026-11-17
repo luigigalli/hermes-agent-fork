@@ -32,14 +32,7 @@ function target(): URL {
 /** 'opened' or the rejection message once the pop-out settles, so a test can look while it is pending. */
 function outcome(pending: Promise<unknown>): () => string | undefined {
   let result: string | undefined
-  pending.then(
-    () => {
-      result = 'opened'
-    },
-    (error: Error) => {
-      result = error.message
-    }
-  )
+  pending.then(() => { result = 'opened' }, (error: Error) => { result = error.message })
 
   return () => result
 }

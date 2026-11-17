@@ -10,12 +10,7 @@ function GatewayRooms({ onOpen }: { onOpen: (key: string, origin: CanonicalGroup
   return (
     <>
       {rooms.map(room => (
-        <CanonicalGroupRow
-          active={false}
-          key={room.key}
-          onOpen={() => onOpen(bindGatewayGroupRoom(room), 'key')}
-          room={room}
-        />
+        <CanonicalGroupRow active={false} key={room.key} onOpen={() => onOpen(bindGatewayGroupRoom(room), 'key')} room={room} />
       ))}
     </>
   )

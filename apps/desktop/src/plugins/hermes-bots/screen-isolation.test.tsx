@@ -4,14 +4,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { RosterRow } from './types'
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { useStore } = await import('@nanostores/react')
   const { onGatewayEvent } = await import('../../contrib/events')
 
   return {
-
-    ...actual,
     Codicon: () => null,
     useValue: useStore,
     resolveSiblingWsUrl: vi.fn(),

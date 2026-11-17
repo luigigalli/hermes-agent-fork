@@ -34,13 +34,9 @@ const { state } = vi.hoisted(() => ({
 const store = <T>(read: () => T): Store<T> => ({ get: read, listen: () => () => undefined })
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom } = await import('nanostores')
 
   return {
-
-    ...actual,
     atom,
     host: {
       activeConnectionId: () => state.activeConnectionId,

@@ -8,25 +8,14 @@ import { createGatewayEventHandler } from '../app/createGatewayEventHandler.js'
 import { patchUiState, resetUiState } from '../app/uiStore.js'
 
 const startup = vi.hoisted(() => ({ image: '' }))
-vi.mock('../config/env.js', async importOriginal => ({
-  ...(await importOriginal<Record<string, unknown>>()),
-  get STARTUP_IMAGE() {
-    return startup.image
-  },
-  STARTUP_QUERY: 'literal caption'
-}))
+vi.mock('../config/env.js', async importOriginal => ({ ...await importOriginal<Record<string, unknown>>(), get STARTUP_IMAGE() { return startup.image }, STARTUP_QUERY: 'literal caption' }))
 
 it('startup image bytes travel with the literal prompt and attachment failure prevents a text-only run', async () => {
   const home = mkdtempSync(join(tmpdir(), 'ink-startup-image-'))
   vi.stubEnv('HERMES_HOME', home)
   vi.stubEnv('HERMES_TUI_GATEWAY_URL', '')
   startup.image = join(home, 'startup.png')
-
-  const png = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nL8AAAAASUVORK5CYII=',
-    'base64'
-  )
-
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nL8AAAAASUVORK5CYII=', 'base64')
   writeFileSync(startup.image, png)
 
   try {
@@ -34,10 +23,7 @@ it('startup image bytes travel with the literal prompt and attachment failure pr
       resetUiState()
       patchUiState({ sid: 'owner' })
 
-      if (!valid) {
-        rmSync(startup.image)
-      }
-
+      if (!valid) { rmSync(startup.image) }
       const submit = vi.fn()
       const sys = vi.fn()
       const request = vi.fn(async () => ({}))
@@ -45,14 +31,7 @@ it('startup image bytes travel with the literal prompt and attachment failure pr
       const handler = createGatewayEventHandler({
         gateway: { gw: { isCanonical: true, request }, rpc: request },
         composer: { setInput: vi.fn(), enqueue: vi.fn() },
-        session: {
-          STARTUP_RESUME_ID: 'owner',
-          colsRef: { current: 80 },
-          resumeById: vi.fn(),
-          newSession: vi.fn(),
-          resetSession: vi.fn(),
-          setCatalog: vi.fn()
-        },
+        session: { STARTUP_RESUME_ID: 'owner', colsRef: { current: 80 }, resumeById: vi.fn(), newSession: vi.fn(), resetSession: vi.fn(), setCatalog: vi.fn() },
         submission: { submitLiteralRef: { current: submit }, submitRef: { current: vi.fn() } },
         system: { sys, bellOnComplete: false, bellOnPrompt: false },
         transcript: { appendMessage: vi.fn(), panel: vi.fn(), setHistoryItems: vi.fn() },
@@ -72,9 +51,5 @@ it('startup image bytes travel with the literal prompt and attachment failure pr
 
       expect(request.mock.calls.some(([method]) => method === 'image.attach')).toBe(false)
     }
-  } finally {
-    resetUiState()
-    vi.unstubAllEnvs()
-    rmSync(home, { recursive: true, force: true })
-  }
+  } finally { resetUiState(); vi.unstubAllEnvs(); rmSync(home, { recursive: true, force: true }) }
 })

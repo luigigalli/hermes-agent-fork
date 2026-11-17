@@ -20,14 +20,10 @@ const rfbs = vi.hoisted(() => [] as Array<{ emit: (type: string, detail?: unknow
 const retention = vi.hoisted(() => ({ held: 0 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { useStore } = await import('@nanostores/react')
   const { onGatewayEvent } = await import('../../contrib/events')
 
   return {
-
-    ...actual,
     Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
       <button {...props}>{children}</button>
     ),

@@ -21,7 +21,7 @@ method = _registry.method
 #: Wire order of ``groups.capabilities.methods``; every one runs on the RPC pool.
 _METHODS = (
     "groups.capabilities", "groups.list", "groups.create", "groups.state", "groups.send",
-    "groups.update_members", "groups.rename", "groups.context", "groups.log", "groups.disband", "groups.replicate", "groups.replica_state",
+    "groups.rename", "groups.context", "groups.log", "groups.disband", "groups.replicate", "groups.replica_state",
     "groups.promote", "groups.demote", "groups.stop", "groups.continue", "groups.retry", "groups.approve",
     "groups.peer.invite", "groups.peer.revoke", "groups.peer.register", "groups.attachment.upload",
     "groups.attachment.download")
@@ -448,17 +448,6 @@ def _(rid, params: dict, service) -> dict:
     return _ok(rid, {"room": room})
 
 
-@_room_method(
-    "groups.update_members", code=5117, room_code=4117, service_code=4123,
-    service_message=_WORKER_UNAVAILABLE)
-def _(rid, params: dict, service) -> dict:
-    """Replace one live hosted room's member roster atomically with its replay event."""
-    room = service.update_room_members(
-        room_id=params.get("room_id"), event_id=params.get("event_id"),
-        members=params.get("members"))
-    return _ok(rid, {"room": room})
-
-
 @_room_method("groups.state", code=5115, room_code=4114, db=True)
 def _(rid, params: dict, db_path) -> dict:
     """Return one hosted room's replay cursor and fenced authority state."""
@@ -466,14 +455,8 @@ def _(rid, params: dict, db_path) -> dict:
     room = room_state(
         db_path, room_id=params.get("room_id"),
         include_disbanded=params.get("include_disbanded") is True)
-    service = get_hosted_room_service()
-    result = {"room": room}
-    if room.get("disbanded_at") is None:
-        from gateway.hosted_room_context import room_context
-        result["context"] = room_context(db_path, room_id=room["room_id"])
-        if service is not None:
-            result["driver_status"] = service.status(str(room["room_id"]))
-    return _ok(rid, result)
+    from gateway.hosted_room_context import groups_state_result
+    return _ok(rid, groups_state_result(db_path, room, get_hosted_room_service()))
 
 
 @_room_method(

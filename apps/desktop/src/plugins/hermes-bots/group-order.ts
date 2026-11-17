@@ -19,7 +19,11 @@ export function sortGroupRosterRows<T extends OrderRow>(
 
   const groups = legacy
     .filter(row => row.kind === 'group')
-    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || savedOrder(a, rooms) - savedOrder(b, rooms))
+    .sort(
+      (a, b) =>
+        Number(b.pinned) - Number(a.pinned) ||
+        savedOrder(a, rooms) - savedOrder(b, rooms)
+    )
 
   let index = 0
 

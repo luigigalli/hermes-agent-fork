@@ -19,8 +19,6 @@ export function clearWebappSession(): void {
   delete (window as WebappWindow).__HERMES_UI_SURFACE__
 
   for (const key of Object.keys(sessionStorage)) {
-    if (key.startsWith('hermes.webapp.session.v1:')) {
-      sessionStorage.removeItem(key)
-    }
+    if (key.startsWith('hermes.webapp.session.v1:')) {sessionStorage.removeItem(key)}
   }
 }

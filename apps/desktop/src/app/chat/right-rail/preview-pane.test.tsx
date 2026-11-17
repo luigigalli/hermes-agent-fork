@@ -830,7 +830,6 @@ describe('PreviewPane console state', () => {
   // A browser tab's back button belongs to the tab: the pane leaves it alone.
   it('leaves the mouse back button to the browser tab in browser-hosted Desktop', async () => {
     globalThis.document.documentElement.dataset.hermesDesktopHost = 'browser'
-
     const target = {
       kind: 'url' as const,
       label: 'Example',

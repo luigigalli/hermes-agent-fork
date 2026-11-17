@@ -246,11 +246,7 @@ export function createDesktopProfilePreferences(
 
     const existing = readConnectionProfiles()
 
-    if (
-      !DESKTOP_PROFILE_NAME_RE.test(profile) ||
-      existing[connectionId] === profile ||
-      !isKnownConnection(connectionId)
-    ) {
+    if (!DESKTOP_PROFILE_NAME_RE.test(profile) || existing[connectionId] === profile || !isKnownConnection(connectionId)) {
       return
     }
 

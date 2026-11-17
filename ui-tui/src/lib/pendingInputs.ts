@@ -47,11 +47,7 @@ export function pendingInputOwner(destination: SubmissionDestination): Submissio
 }
 
 // Resume authorizes the source → successor mapping; navigation alone does not.
-export function migratePendingInputs(
-  previous: SubmissionDestination,
-  successorSid: string,
-  successorStoredSid?: string
-): void {
+export function migratePendingInputs(previous: SubmissionDestination, successorSid: string, successorStoredSid?: string): void {
   if (!previous.sid || !successorSid || (previous.sid === successorSid && previous.storedSid === successorStoredSid)) {
     return
   }
@@ -99,22 +95,7 @@ export function savePendingInput(item: QueueItem): void {
   const path = join(dir, `${item.submissionId}.json`)
   const temporary = `${path}.${process.pid}.tmp`
   const ownerDestination = pendingInputOwner(item.ownerDestination ?? item.destination)
-
-  const {
-    submissionId,
-    display,
-    text,
-    preparedText,
-    attachments,
-    controlMethod,
-    executionGeneration,
-    inFlight,
-    failed,
-    createdAt,
-    queued,
-    legacyAttempted
-  } = item
-
+  const { submissionId, display, text, preparedText, attachments, controlMethod, executionGeneration, inFlight, failed, createdAt, queued, legacyAttempted } = item
   const destination = inFlight || failed ? item.destination : ownerDestination
   writeFileSync(
     temporary,
@@ -193,8 +174,7 @@ export function loadPendingInputs(destination: SubmissionDestination, durableRes
         (durableResume
           ? (owner?.storedSid || owner?.sid) !== (destination.storedSid || destination.sid)
           : owner?.sid !== destination.sid) ||
-        owner?.profileHome !== destination.profileHome ||
-        owner?.profile !== destination.profile
+        owner?.profileHome !== destination.profileHome || owner?.profile !== destination.profile
       ) {
         return []
       }

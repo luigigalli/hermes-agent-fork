@@ -22,16 +22,10 @@ function sharedLocks() {
       const callback = rest.at(-1) as (lock: { name: string } | null) => Promise<unknown>
       const options = (rest.length > 1 ? rest[0] : {}) as { ifAvailable?: boolean }
 
-      if (held.has(name) && options.ifAvailable) {
-        return callback(null)
-      }
+      if (held.has(name) && options.ifAvailable) { return callback(null) }
       held.add(name)
 
-      try {
-        return await callback({ name })
-      } finally {
-        held.delete(name)
-      }
+      try { return await callback({ name }) } finally { held.delete(name) }
     }
   }
 }
@@ -41,10 +35,8 @@ async function openWindow(submit: (params: Record<string, unknown>) => unknown) 
   vi.resetModules()
   const { useSubmitPrompt } = await import('./submit')
 
-  const requestGateway = vi.fn(
-    async (method: string, params?: Record<string, unknown>) =>
-      (method === 'prompt.submit' ? submit(params!) : {}) as never
-  )
+  const requestGateway = vi.fn(async (method: string, params?: Record<string, unknown>) =>
+    (method === 'prompt.submit' ? submit(params!) : {}) as never)
 
   const state = createClientSessionState()
 
@@ -84,10 +76,7 @@ it('two windows sending the same text keep separate identities; only the writer 
   const admit = (params: Record<string, unknown>) => {
     ids.push(String(params.submission_id))
 
-    if (loseAck) {
-      loseAck = false
-      throw new Error('connection closed')
-    }
+    if (loseAck) { loseAck = false; throw new Error('connection closed') }
 
     return { admission_id: params.submission_id, status: 'started' }
   }
@@ -115,10 +104,7 @@ it('without Web Locks, a slash command sent from two tabs keeps each tab its own
   const admit = (params: Record<string, unknown>) => {
     sent.push([params.submission_id, params.text])
 
-    if (loseAck) {
-      loseAck = false
-      throw new Error('connection closed')
-    }
+    if (loseAck) { loseAck = false; throw new Error('connection closed') }
 
     return { admission_id: params.submission_id, status: 'started' }
   }
@@ -132,11 +118,7 @@ it('without Web Locks, a slash command sent from two tabs keeps each tab its own
 
     // The first tab's retry re-sends its retained expansion under its own id, never a new expansion.
     expect(await first.send('expanded again', { retryText: '/skill task', submission_id: 'first' })).toBe(true)
-    expect(sent).toEqual([
-      ['first', 'expanded skill'],
-      ['second', 'expanded skill'],
-      ['first', 'expanded skill']
-    ])
+    expect(sent).toEqual([['first', 'expanded skill'], ['second', 'expanded skill'], ['first', 'expanded skill']])
   } finally {
     vi.unstubAllGlobals()
   }

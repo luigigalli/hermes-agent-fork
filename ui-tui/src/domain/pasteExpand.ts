@@ -84,8 +84,7 @@ const tokenChips = (value: string, tokens: ComposerToken[]) => {
   return chips.sort((a, b) => a.at - b.at)
 }
 
-const pasteChips = (value: string, tokens: ComposerToken[]) =>
-  tokenChips(value, tokens).filter(c => c.token.kind === 'paste')
+const pasteChips = (value: string, tokens: ComposerToken[]) => tokenChips(value, tokens).filter(c => c.token.kind === 'paste')
 
 export const hasPasteChip = (value: string, tokens: ComposerToken[]) => pasteChips(value, tokens).length > 0
 
@@ -112,8 +111,7 @@ export function expandPasteChip(value: string, cursor: number, tokens: ComposerT
 }
 
 /** Whether `cursor` sits inside the expanded span, where typed or pasted text joins the paste. */
-export const insideSpan = (span: null | PasteSpan, cursor: number) =>
-  Boolean(span && cursor > span.start && cursor <= span.end)
+export const insideSpan = (span: null | PasteSpan, cursor: number) => Boolean(span && cursor > span.start && cursor <= span.end)
 
 /**
  * Fold the expanded span back into a chip whose payload is the span's current

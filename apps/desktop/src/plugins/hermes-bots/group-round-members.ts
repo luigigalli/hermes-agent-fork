@@ -122,8 +122,6 @@ function prepareGroupRoundMember(context: GroupRoundMemberContext, member: Group
 
   const heldIds = room.heldMessages?.[memberKey] || []
   const heldSet = new Set(heldIds)
-  // Digest cutoff for a re-added member (Merk patch): log length at removal.
-  const cut = room.digestCutoffs?.[memberKey]
   const delivered = room.log.filter((entry: GroupMessage) => Boolean(entry.id && heldSet.has(entry.id)))
   const deliveredIds = new Set(delivered.map((entry: GroupMessage) => entry.id).filter(Boolean))
 
@@ -136,14 +134,7 @@ function prepareGroupRoundMember(context: GroupRoundMemberContext, member: Group
     groupName: context.group,
     members,
     viewer: member,
-    deltaLines: formatGroupDeltaLines(visibleDelta, member, context.group),
-    // Digest input: the member's own held entries never resurface via the
-    // digest, and a re-added member restarts clean at its removal cutoff
-    // (Merk patch over upstream's clean-restart removal semantics).
-    fullLog: room.log.filter(
-      (e: GroupMessage) => (!e.id || !heldSet.has(e.id)) && (!cut || room.log.indexOf(e) >= cut)
-    ),
-    currentThreadId: thread
+    deltaLines: formatGroupDeltaLines(visibleDelta, member, context.group)
   })
 
   // Images riding this delta (user attachments — member entries don't
@@ -169,10 +160,8 @@ function memberOwesAnswer(
   log: GroupMessage[],
   seesNewUserEntry: boolean
 ): boolean {
-  return (
-    Boolean(context.addressedKeys?.has(groupMemberKey(member))) &&
+  return Boolean(context.addressedKeys?.has(groupMemberKey(member))) &&
     (seesNewUserEntry || !answeredSinceLastUser(log, member, context.thread))
-  )
 }
 
 /** True when `member` has a room entry in `thread` after the latest user entry there. */

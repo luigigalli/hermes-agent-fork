@@ -28,14 +28,10 @@ const { hostMock, mergeServerMeta, trackInboundActivity } = vi.hoisted(() => ({
 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom } = await import('nanostores')
   const { useQuery } = await import('@tanstack/react-query')
 
   return {
-
-    ...actual,
     atom,
     host: hostMock,
     queryClient: { getQueryData: vi.fn(), invalidateQueries: vi.fn() },

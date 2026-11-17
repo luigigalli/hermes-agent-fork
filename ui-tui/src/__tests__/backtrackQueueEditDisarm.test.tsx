@@ -35,7 +35,6 @@ class FakeInput extends EventEmitter {
 }
 
 const wait = () => new Promise(resolve => setTimeout(resolve, 70))
-
 let unmount = () => {}
 
 beforeEach(() => {
@@ -68,14 +67,7 @@ function mount() {
       composer: {
         actions: { queueDraft: () => 'queued follow-up', setHistoryIdx: vi.fn(), setInput, setQueueEdit },
         refs: { historyRef: { current: [] }, queueRef: { current: [{ text: 'queued follow-up' }] } },
-        state: {
-          completions: [],
-          input: '',
-          inputBuf: [],
-          queueEditIdx: null,
-          queuedDisplay: ['queued follow-up'],
-          tokens: []
-        }
+        state: { completions: [], input: '', inputBuf: [], queueEditIdx: null, queuedDisplay: ['queued follow-up'], tokens: [] }
       },
       gateway: { gw: { isCanonical: true } },
       terminal: { hasSelection: false, stdout },
@@ -86,12 +78,7 @@ function mount() {
     return null
   }
 
-  const instance = renderSync(<Harness />, {
-    exitOnCtrlC: false,
-    patchConsole: false,
-    stdin: stdin as any,
-    stdout: stdout as any
-  })
+  const instance = renderSync(<Harness />, { exitOnCtrlC: false, patchConsole: false, stdin: stdin as any, stdout: stdout as any })
 
   unmount = () => instance.unmount()
 

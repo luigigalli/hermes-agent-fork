@@ -33,9 +33,7 @@ export function pluginsUpdateAllLines(outcome: PluginsUpdateAllResponse): string
 
   const lines = [
     t('slashCmd.ops.pluginsUpdate.title'),
-    ...results.map(
-      row => `  ${STATUS_MARK[row.status]?.() ?? row.status}  ${row.name}${row.detail ? `  (${row.detail})` : ''}`
-    ),
+    ...results.map(row => `  ${STATUS_MARK[row.status]?.() ?? row.status}  ${row.name}${row.detail ? `  (${row.detail})` : ''}`),
     ...(outcome.skipped ?? []).map(skip => `  - ${t('slashCmd.ops.pluginsUpdate.skipped', skip.name, skip.reason)}`)
   ]
 

@@ -8,8 +8,6 @@ import { translateBots } from './i18n-test-helper'
 // card + `MEDIA:` transform) when the SDK exports it. The stub records what the
 // room handed it so the test asserts the wiring, not the renderer's output.
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
   const base = await pluginSdkMock(createGroupGateway().host)
 
@@ -20,8 +18,6 @@ vi.mock('@hermes/plugin-sdk', async () => {
   )
 
   return {
-
-    ...actual,
     ...base,
     Button,
     RowButton: Button,

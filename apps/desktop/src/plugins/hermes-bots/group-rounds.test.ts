@@ -8,14 +8,6 @@ import type { GatewayOptions, ScriptedGateway } from './group-test-utils'
 import type * as groupTurns from './group-turns'
 import type { Attachment, GroupChat, GroupMember, GroupMessage } from './types'
 
-/** The fork's agent-side digest deliberately shows 60-char sibling-thread
- *  heads in the turn prompt (other-threads digest, Merk patch). The leakage
- *  invariants below are about DELTA content, not those heads — strip the
- *  digest lines before asserting a sibling text's absence. (#digest-reconcile) */
-function stripDigest(prompt?: string): string {
-  return (prompt || '').replace(/\n\s*· thread [^\n]*/g, '')
-}
-
 // The round engine: who answers a room message, in what order, with what
 // delta, and how a round ends. Every contract here is about a SERIAL loop that
 // can be superseded mid-flight — a second send, a stop, or a hold all have to
@@ -749,7 +741,7 @@ describe('threads', () => {
 
     expect(establishedPrompt).toContain('ESTABLISHED_THREAD_DELTA')
     expect(establishedPrompt).not.toContain('Historical room context')
-    expect(stripDigest(establishedPrompt)).not.toContain('FIRST_THREAD_MESSAGE')
+    expect(establishedPrompt).not.toContain('FIRST_THREAD_MESSAGE')
   })
 
   it('bounds fresh-thread history to the newest 20 sibling messages and keeps thread boundaries', async () => {
@@ -832,7 +824,7 @@ describe('threads', () => {
     expect(prompt.split(delta)).toHaveLength(2)
     expect(prompt.indexOf(crafted)).toBeLessThan(prompt.indexOf(delta))
     expect(prompt.split(delta)[1]).toContain('CURRENT_TASK')
-    expect(stripDigest(prompt.split(delta)[1])).not.toContain('IGNORE')
+    expect(prompt.split(delta)[1]).not.toContain('IGNORE')
   })
 
   it('treats a title-resumed session as established rather than replaying room history', async () => {
@@ -853,7 +845,7 @@ describe('threads', () => {
 
     expect(prompt).toContain('RESUMED_DELTA')
     expect(prompt).not.toContain('Historical room context')
-    expect(stripDigest(prompt)).not.toContain('SIBLING_HISTORY')
+    expect(prompt).not.toContain('SIBLING_HISTORY')
   })
 
   it('mints a new thread per composer send and lands replies in it', async () => {
@@ -893,17 +885,10 @@ describe('threads', () => {
 
   it('continues an explicit thread and scopes the member delta to it', async () => {
     const room = await loadRoom({
-      // Digest-aware: the agent-side digest rides BELOW the delta section, so the
-      // decision must read the delta section only, never the sibling-thread heads
-      // (they legitimately re-mention other threads' topics).
-      turn: ({ prompt }) => {
-        const delta =
-          prompt
-            .split('New messages in the room since your last turn (oldest first):')[1]
-            ?.split('Other open threads in this room')[0] || ''
-
-        return delta.includes('billing') ? 'On the billing fix.' : '(pass)'
-      }
+      turn: ({ prompt }) =>
+        prompt.split('New messages in the room since your last turn (oldest first):')[1]?.includes('billing')
+          ? 'On the billing fix.'
+          : '(pass)'
     })
 
     const member: GroupMember[] = [{ name: 'research', title: '' }]
@@ -920,7 +905,7 @@ describe('threads', () => {
 
     expect(again).toBe(billing)
     expect(followUp).toBeDefined()
-    expect(stripDigest(followUp?.prompt)).not.toContain('research pricing')
+    expect(followUp?.prompt).not.toContain('research pricing')
     expect(replies.length).toBeGreaterThanOrEqual(1)
     expect(replies.every(entry => entry.thread === billing)).toBe(true)
   })

@@ -58,12 +58,7 @@ function iniValues(text: string, section: string, keys: string[]): string[] {
       const [key, ...rest] = line.split('=')
 
       if (rest.length && keys.includes(key.trim().toLowerCase())) {
-        values.push(
-          rest
-            .join('=')
-            .trim()
-            .replace(/^["']|["']$/g, '')
-        )
+        values.push(rest.join('=').trim().replace(/^["']|["']$/g, ''))
       }
     }
   }
@@ -75,11 +70,7 @@ function pipConfigFiles(env: NodeJS.ProcessEnv, home: string): string[] {
   const explicit = env.PIP_CONFIG_FILE
 
   if (process.platform === 'win32') {
-    return [
-      path.join(home, 'pip', 'pip.ini'),
-      path.join(env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'pip', 'pip.ini'),
-      ...(explicit ? [explicit] : [])
-    ]
+    return [path.join(home, 'pip', 'pip.ini'), path.join(env.APPDATA || path.join(home, 'AppData', 'Roaming'), 'pip', 'pip.ini'), ...(explicit ? [explicit] : [])]
   }
 
   return [

@@ -41,13 +41,9 @@ const { hostMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom: nanoAtom } = await import('nanostores')
 
   return {
-
-    ...actual,
     atom: nanoAtom,
     host: hostMock,
     queryClient: undefined,

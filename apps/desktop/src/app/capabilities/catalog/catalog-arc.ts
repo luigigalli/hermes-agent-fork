@@ -29,14 +29,11 @@ function start(card: HTMLElement) {
     return
   }
 
-  const animation = card.animate(
-    { '--catalog-arc': ['0deg', '360deg'] },
-    {
-      duration: TURN_MS,
-      iterations: Infinity,
-      pseudoElement: '::after'
-    }
-  )
+  const animation = card.animate({ '--catalog-arc': ['0deg', '360deg'] }, {
+    duration: TURN_MS,
+    iterations: Infinity,
+    pseudoElement: '::after'
+  })
 
   animation.startTime = 0
   arcs.set(card, { animation, timer: 0 })

@@ -72,7 +72,9 @@ import {
   $yoloActive,
   idsShareLineage,
   type NewChatWorkspaceTarget,
+  ownerLookupSessionRows,
   resolveComposerSessionKey,
+  restoreComposerModelSelection,
   rotateFreshDraftKey,
   sessionPinId,
   setActiveSessionId,
@@ -135,7 +137,12 @@ import { clearSessionSubagents } from '@/store/subagents'
 import { clearSessionTodos, restoreSessionTodosFromSnapshot } from '@/store/todos'
 import { dropTranscriptTail, dropTranscriptTailEverywhere, saveTranscriptTail } from '@/store/transcript-tail-cache'
 import { isWatchWindow } from '@/store/windows'
-import type { SessionCreateResponse, SessionMessagesResponse, SessionResumeResult, UsageStats } from '@/types/hermes'
+import type {
+  SessionCreateResponse,
+  SessionMessagesResponse,
+  SessionResumeResult,
+  UsageStats
+} from '@/types/hermes'
 
 import { navigateToWorkspacePage, NEW_CHAT_ROUTE, sessionRoute, SETTINGS_ROUTE } from '../../../routes'
 import type { ClientSessionState, SidebarNavItem } from '../../../types'
@@ -547,12 +554,9 @@ export function useSessionActions({
       setCurrentUsage({ calls: 0, input: 0, output: 0, total: 0 })
       setSessionStartedAt(null)
       setTurnStartedAt(null)
-      // The composer's model/effort/fast is sticky UI state (persisted in
-      // localStorage) — a new chat FOLLOWS your last pick instead of snapping
-      // back to the profile default, so we deliberately don't reset it here. The
-      // profile default still owns first-run seeding and profile switches (see
-      // refreshCurrentModel). Keep the canonical service tier too: clearing
-      // it while retaining fast=true would silently downgrade Ultrafast.
+      // Follow the user's sticky pick, not the outgoing runtime/fallback display.
+      restoreComposerModelSelection()
+      // Keep effort/fast/service tier: clearing the tier could downgrade Ultrafast.
       setYoloActive(false)
       setNewChatWorkspaceTarget(hasWorkspaceTarget ? workspaceTarget : undefined)
       // #52589 provenance: only a deliberate string workspace target is an explicit
@@ -1303,7 +1307,7 @@ export function useSessionActions({
         () => isCurrentResume() && !resumedSameSelectedSession && !takeWarmCache()
       )
 
-      const listedStored = $sessions.get().find(session => sessionMatchesStoredId(session, storedSessionId))
+      const listedStored = ownerLookupSessionRows().find(session => sessionMatchesStoredId(session, storedSessionId))
 
       if (ownerRoute || listedStored?.profile) {
         provisional.paint(transcriptRestScope(ownerRoute, listedStored, ambientConnectionId))
@@ -1374,8 +1378,7 @@ export function useSessionActions({
         const cachedRuntimeId = warmHit.runtimeId
         const cachedState = warmHit.state
 
-        const stored =
-          $sessions.get().find(session => sessionMatchesStoredId(session, storedSessionId)) ?? storedForProfile
+        const stored = findListedSession(storedSessionId)?.session ?? storedForProfile
 
         let cachedViewState =
           !cachedState.model && stored?.model != null
@@ -1944,8 +1947,7 @@ export function useSessionActions({
       const runtimeStartedAt = Date.now()
       setSessionStartedAt(runtimeStartedAt)
 
-      const stored =
-        $sessions.get().find(session => sessionMatchesStoredId(session, storedSessionId)) ?? storedForProfile
+      const stored = findListedSession(storedSessionId)?.session ?? storedForProfile
 
       applyStoredSessionPreviewRuntimeInfo(stored, storedSessionId, { sameSession: resumedSameSelectedSession })
 
@@ -2057,12 +2059,7 @@ export function useSessionActions({
             : viewMessagesForReconcile()
 
           // Tail page + previously backfilled prefix (same-session re-resume).
-          prefetchedPage = await graftTranscriptPage(
-            prefetchedResult,
-            previousMessages,
-            storedSessionId,
-            sessionRestScope
-          )
+          prefetchedPage = await graftTranscriptPage(prefetchedResult, previousMessages, storedSessionId, sessionRestScope)
           prefetchedTranscriptMessages = prefetchedPage.transcript
           localSnapshot = prefetchedPage.snapshot
           prefetchApplied = true

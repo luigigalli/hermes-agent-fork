@@ -11,12 +11,7 @@ import {
   Tip
 } from '@hermes/plugin-sdk'
 
-import {
-  connectionName,
-  groupSelectionElsewhere,
-  seatableGroupBots,
-  useGroupCapability
-} from './canonical-group-capabilities'
+import { connectionName, groupSelectionElsewhere, seatableGroupBots, useGroupCapability } from './canonical-group-capabilities'
 import { botSourceStatus } from './data'
 import type { useBots } from './i18n'
 import { setActivityToasts } from './roster-actions'
@@ -114,7 +109,9 @@ export function renderRosterToolbar({
           {b.roster.title}
         </span>
         <div className="flex items-center gap-0.5">
-          <Tip label={activityToasts ? b.roster.toastsOn : b.roster.toastsOff}>
+          <Tip
+            label={activityToasts ? b.roster.toastsOn : b.roster.toastsOff}
+          >
             <Button
               className="rounded-md text-(--ui-text-tertiary) hover:text-foreground"
               onClick={() => setActivityToasts(!activityToasts)}

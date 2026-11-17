@@ -383,20 +383,14 @@ class TurnController {
       const isActiveTurn = () => {
         const current = getUiState()
 
-        return (
-          current.sid === sid &&
-          isCurrentDestination(destination) &&
-          current.busy &&
-          !this.interrupted &&
+        return current.sid === sid && isCurrentDestination(destination) && current.busy && !this.interrupted &&
           current.info?.execution_epoch === info?.execution_epoch &&
           current.info?.execution_generation === info?.execution_generation
-        )
       }
 
       try {
         const response = await gw.request<SessionInterruptResponse>('session.interrupt', {
-          session_id: sid,
-          execution_generation: info?.execution_generation
+          session_id: sid, execution_generation: info?.execution_generation
         })
 
         // An already-settled handle is a successful no-op, not a cancelled turn.
@@ -1122,16 +1116,7 @@ class TurnController {
     // parked archive into this one.
     this.segmentMessages = []
     this.pendingSegmentTools = []
-    patchTurnState({
-      activity: [],
-      outcome: '',
-      streamPendingTools: [],
-      streamSegments: [],
-      subagents: [],
-      toolTokens: 0,
-      tools: [],
-      turnTrail: []
-    })
+    patchTurnState({ activity: [], outcome: '', streamPendingTools: [], streamSegments: [], subagents: [], toolTokens: 0, tools: [], turnTrail: [] })
   }
 
   upsertSubagent(

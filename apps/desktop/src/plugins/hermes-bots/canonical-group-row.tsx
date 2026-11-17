@@ -68,10 +68,7 @@ export function CanonicalGroupRow({ active, onOpen, room }: CanonicalGroupRowPro
               <span className="flex items-baseline justify-between gap-2">
                 <span className="min-w-0 flex-1 truncate text-[0.8125rem] font-medium">{room.name}</span>
                 {state ? (
-                  <span
-                    className="inline-flex shrink-0 items-center self-center text-[0.6875rem]"
-                    data-room-state={state}
-                  >
+                  <span className="inline-flex shrink-0 items-center self-center text-[0.6875rem]" data-room-state={state}>
                     {state === 'working' ? (
                       <span aria-hidden="true" className="text-(--ui-accent)">
                         <GlyphSpinner />
@@ -83,11 +80,7 @@ export function CanonicalGroupRow({ active, onOpen, room }: CanonicalGroupRowPro
                       />
                     )}
                     <span className="sr-only">
-                      {state === 'working'
-                        ? labels.rowWorking
-                        : state === 'failed'
-                          ? labels.rowFailed
-                          : labels.rowNeedsYou}
+                      {state === 'working' ? labels.rowWorking : state === 'failed' ? labels.rowFailed : labels.rowNeedsYou}
                     </span>
                   </span>
                 ) : null}

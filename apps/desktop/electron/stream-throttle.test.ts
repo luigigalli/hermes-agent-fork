@@ -73,7 +73,6 @@ test('voice preserves only its hidden owner while streaming, not idle or sibling
   const throttle = createStreamThrottle(timers)
   const voice = makeWindow()
   const mirror = makeWindow()
-
   for (const win of [voice, mirror]) {
     throttle.register(win)
     win.setVisibility('minimize')

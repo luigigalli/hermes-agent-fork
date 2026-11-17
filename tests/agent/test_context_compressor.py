@@ -287,62 +287,6 @@ class TestSummarizeToolResultOutcome:
         assert self._stub(tool_name, args, payload) == expected
 
 
-class TestSummarizeToolResultOutcome:
-    """A compaction stub must carry the outcome of the call (#131244): a refused ``read_file``, a
-    rate-limited ``web_search``, a dead cron run, a non-zero process exit or a failed MCP tool used to
-    compress into the same stub as the success it never was, and the post-compaction agent reported
-    the success."""
-
-    @staticmethod
-    def _stub(tool_name, args, payload):
-        return _summarize_tool_result(tool_name, json.dumps(args), json.dumps(payload))
-
-    @pytest.mark.parametrize("tool_name, args, payload, expected", [
-        ("read_file", {"path": "gone.py", "offset": 1}, {"error": "File not found: gone.py"},
-         "[read_file] read gone.py from line 1 (36 chars) FAILED: File not found: gone.py"),
-        ("web_search", {"query": "hermes"}, {"error": "rate limited"},
-         "[web_search] query='hermes' (25 chars result) FAILED: rate limited"),
-        ("memory", {"action": "add", "target": "a note"}, {"error": "unknown action"},
-         "[memory] add on a note FAILED: unknown action"),
-        ("text_to_speech", {}, {"error": "no voice available"},
-         "[text_to_speech] generated audio (31 chars) FAILED: no voice available"),
-        ("cronjob_manage", {"action": "create"}, {"success": False}, "[cronjob] create FAILED"),
-        ("cronjob_manage", {"action": "run"},
-         {"success": True, "job": {"execution_success": False, "execution_error": "agent exited with code 1"}},
-         "[cronjob] run FAILED: agent exited with code 1"),
-        ("process_manage", {"action": "poll", "session_id": "p1"},
-         {"status": "exited", "exit_code": 1, "completion_reason": "nonzero_exit"},
-         "[process] poll session=p1 FAILED: exit code 1"),
-        # Every MCP/plugin tool falls through to the generic stub.
-        ("some_mcp_tool", {"a": 1}, {"error": "boom"}, "[some_mcp_tool] a=1 (17 chars result) FAILED: boom"),
-        ("delegate_task", {"goal": "ship it"}, {"error": "Unknown action"},
-         "[delegate_task] 'ship it' (27 chars result) FAILED: Unknown action"),
-    ])
-    def test_failed_call_stub_is_marked_failed(self, tool_name, args, payload, expected):
-        assert self._stub(tool_name, args, payload) == expected
-
-    @pytest.mark.parametrize("tool_name, args, payload, expected", [
-        ("web_search", {"query": "hermes"}, {"results": [{"title": "hit"}]},
-         "[web_search] query='hermes' (31 chars result)"),
-        ("text_to_speech", {}, {"success": True, "path": "/tmp/out.wav"}, "[text_to_speech] generated audio (41 chars)"),
-        # ``job`` carries stored state from earlier runs; only this call's outcome may mark the stub.
-        ("cronjob_manage", {"action": "poll"},
-         {"success": True, "job": {"error": "last run failed", "execution_success": True}}, "[cronjob] poll"),
-        ("process_manage", {"action": "poll", "session_id": "p1"}, {"status": "exited", "exit_code": 0},
-         "[process] poll session=p1"),
-        ("process_manage", {"action": "poll", "session_id": "p1"}, {"status": "running", "pid": 4242},
-         "[process] poll session=p1"),
-        # The agent's own kill and a run the scheduler is already firing are not failures.
-        ("process_manage", {"action": "poll", "session_id": "p1"},
-         {"status": "exited", "exit_code": -15, "completion_reason": "killed"}, "[process] poll session=p1"),
-        ("cronjob_manage", {"action": "run"},
-         {"success": True, "job": {"execution_skipped": "Already being fired by the scheduler; not run again."}},
-         "[cronjob] run SKIPPED: Already being fired by the scheduler; not run again."),
-    ])
-    def test_successful_call_stub_is_not_marked(self, tool_name, args, payload, expected):
-        assert self._stub(tool_name, args, payload) == expected
-
-
 class TestSummarizeToolResultClarify:
     def test_preserves_resolved_user_response_without_metadata(self):
         content = json.dumps({"responses": [{
@@ -3208,16 +3152,14 @@ class TestSummaryPromptBounding:
         with patch("agent.context_compressor.call_llm", return_value=resp) as mock_call:
             assert compressor._generate_summary(messages) is not None
         assert mock_call.call_count == 1
-        prompt = mock_call.call_args.kwargs["messages"][0]["content"]
+        prompt = "\n".join(m["content"] for m in mock_call.call_args.kwargs["messages"])
         assert "chars elided" in prompt
 
-        transcript = prompt[prompt.index("[USER]: record-"):]
-        sections = [sec for sec in self._ELISION_MARKER.split(transcript) if "record-" in sec]
-        assert sections
-        for section in sections:
-            assert section.startswith("[USER]: record-"), section[:60]
-        whole = re.findall(r"\[USER\]: record-\d{4} " + re.escape(body) + r"(?=\n\n|\n*$)", transcript)
-        assert len(whole) == transcript.count("[USER]: record-") > 8
+        # Each retained record is a whole user turn in its own role (#146750), never a fragment.
+        transcript = "\n\n".join(m["content"] for m in mock_call.call_args.kwargs["messages"][1:-1] if m["role"] == "user")
+        transcript = transcript[transcript.index("record-"):]
+        whole = ["[USER]: " + r for r in re.findall(r"record-\d{4} " + re.escape(body) + r"(?=\n\nrecord-|\n\n\[|$)", transcript)]
+        assert len(whole) == transcript.count("record-") > 8
         # Newest record anchors the tail and both ends of the history are represented.
         assert whole[-1].startswith("[USER]: record-1199 ")
         assert whole[0].startswith("[USER]: record-0000 ")
@@ -3293,7 +3235,7 @@ class TestSummaryPromptBounding:
         with patch("agent.context_compressor.call_llm", return_value=mock_response) as mock_call:
             summary = c._generate_summary(messages)
 
-        prompt = mock_call.call_args.kwargs["messages"][0]["content"]
+        prompt = "\n".join(m["content"] for m in mock_call.call_args.kwargs["messages"])
         assert summary.startswith(SUMMARY_PREFIX)
         # previous summary block + new-turns block each capped, plus the
         # fixed template: well under 3x the cap (unbounded would be ~800K).

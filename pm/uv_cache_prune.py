@@ -28,43 +28,23 @@ def lock_package_names(source_repo: Path) -> set[str]:
     return {_normalized(entry["name"]) for entry in data["package"]}
 
 
-def _drop_uncontained(entry: Path, cache: Path) -> int:
-    """Drop a symlink that can't ever be a cache hit: gone or foreign.
-
-    A shipped or rolled cache must be self-contained: uv keeps its links
-    relative inside the cache, so an absolute link text pins a foreign
-    directory and a stale target resolves to nothing — both only mean a
-    rejected payload downstream. Returns 1 when the link was dropped.
-    """
-    if not entry.is_symlink():
-        return 0
-    target = os.readlink(entry)
-    inside = Path(target) if os.path.isabs(target) else entry.parent / target
-    if not inside.exists() or not inside.resolve().is_relative_to(cache.resolve()):
-        entry.unlink()
-        return 1
-    return 0
-
-
 def _drop_dangling_links(cache: Path) -> int:
-    """Delete wheel and sdist links that can't ever be a cache hit.
+    """Delete wheel and sdist links whose ``archive-v0/`` bucket is gone.
 
     URL, git and named-index entries sit a hash directory deeper than ``pypi``
-    and are not pruned by name; their links into ``archive-v0`` must be
-    self-contained. A link with no target is never a cache hit, and a payload
-    that ships one fails ``publish_prepared``'s link check with "missing or
-    escaped prepared path"; an absolute link text pins a foreign directory,
-    which the same check refuses as "escaped". ``os.walk`` never follows
-    symlinks: directory links (uv's ``wheels-v*/index/<url-hash>/<name>/<version>``
-    level is one) ride in ``dirs`` here and file links in ``files``; both go.
+    and are not pruned by name, but their links point into buckets the prune
+    removed. A link with no target is never a cache hit, and a payload that
+    ships one fails ``publish_prepared``'s link check. ``os.walk`` lists a
+    dangling link among the files, so the walk never follows one.
     """
     dropped = 0
     for family_dir in (*cache.glob("wheels-v*"), *cache.glob("sdists-v*")):
-        for directory, dirs, files in os.walk(family_dir):
+        for directory, _dirs, files in os.walk(family_dir):
             for name in files:
-                dropped += _drop_uncontained(Path(directory, name), cache)
-            for name in list(dirs):
-                dropped += _drop_uncontained(Path(directory, name), cache)
+                entry = Path(directory, name)
+                if entry.is_symlink() and not entry.exists():
+                    entry.unlink()
+                    dropped += 1
     return dropped
 
 

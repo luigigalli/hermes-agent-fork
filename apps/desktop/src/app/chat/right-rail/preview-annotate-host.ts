@@ -62,7 +62,6 @@ export function createPreviewAnnotateGuest(webview: PreviewDriveGuest | null): n
         '({ width: window.innerWidth, height: window.innerHeight })',
         signal
       )) as { height: number; width: number }
-
       signal?.throwIfAborted()
       const dataUrl = await window.hermesDesktop.capturePreview?.({ rect, viewport, webContentsId })
 
@@ -100,9 +99,7 @@ export function overlayInstallScript(source: string, session = ++nextOverlaySess
     `if ((window.__hermesAnnotateSession || 0) >= ${session}) return;` +
     `window.__hermesAnnotateSession = ${session};` +
     'if (window.__hermesAnnotate) window.__hermesAnnotate.teardown();' +
-    'var api=' +
-    source +
-    ';window.__hermesAnnotate=api;api.install();})()'
+    'var api=' + source + ';window.__hermesAnnotate=api;api.install();})()'
   )
 }
 

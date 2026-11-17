@@ -67,11 +67,7 @@ class RemoteMachine {
     if (method === 'profiles.list') {
       return {
         profiles: [
-          {
-            name: 'default',
-            ui_meta: { 'hermes-bots': { groups: this.groups } },
-            ui_meta_revisions: { 'hermes-bots': this.revision }
-          }
+          { name: 'default', ui_meta: { 'hermes-bots': { groups: this.groups } }, ui_meta_revisions: { 'hermes-bots': this.revision } }
         ]
       }
     }
@@ -175,9 +171,7 @@ describe('a membership write its machine dropped after the read', () => {
       }
     }
 
-    await expect(room.data.saveBotMeta(homelab, { groups: [] })).resolves.toMatchObject({
-      serverOutcome: 'unsupported'
-    })
+    await expect(room.data.saveBotMeta(homelab, { groups: [] })).resolves.toMatchObject({ serverOutcome: 'unsupported' })
   })
 })
 
@@ -217,10 +211,8 @@ describe('overlapping edits of one bot', () => {
 })
 
 describe('an undo that does not land', () => {
-  it.each([
-    'desktop' as const,
-    { kind: 'gateway' as const, connectionId: 'local', profile: 'default', roomId: 'core' }
-  ])('reports the seat its machine kept and preserves its engine (%j)', async engine => {
+  it.each(['desktop' as const, { kind: 'gateway' as const, connectionId: 'local', profile: 'default', roomId: 'core' }])(
+    'reports the seat its machine kept and preserves its engine (%j)', async engine => {
     const room = await loadRoom()
     const remoteA = remoteBot('remote-a', 'Atlas')
     const remoteB = remoteBot('remote-b', 'Borealis')
@@ -257,8 +249,8 @@ describe('an undo that does not land', () => {
     expect(machineA.groups).toEqual(['Core'])
     expect(room.chat.$groupChats.get().Core.engine).toEqual(engine)
     expect(seatedKeys(room)).toEqual(['local::programmer', 'local::reviewer', 'remote-a::default'])
-    expect(
-      room.chat.$groupChats.get().Core.members?.map(member => `${member.connectionId || 'local'}::${member.name}`)
-    ).toContain('remote-a::default')
+    expect(room.chat.$groupChats.get().Core.members?.map(member => `${member.connectionId || 'local'}::${member.name}`)).toContain(
+      'remote-a::default'
+    )
   })
 })

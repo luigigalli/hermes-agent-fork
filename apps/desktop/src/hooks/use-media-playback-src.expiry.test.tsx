@@ -18,9 +18,7 @@ function Player({ path }: { path: string }) {
 
   return (
     <>
-      {src && (
-        <video data-testid="video" onError={onError} onLoadedMetadata={onLoadedMetadata} preload="none" src={src} />
-      )}
+      {src && <video data-testid="video" onError={onError} onLoadedMetadata={onLoadedMetadata} preload="none" src={src} />}
       {failed && <span>failed</span>}
     </>
   )

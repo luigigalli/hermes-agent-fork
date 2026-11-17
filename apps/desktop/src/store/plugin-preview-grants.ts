@@ -90,6 +90,7 @@ if (typeof window !== 'undefined') {
 /** "Don't allow" answers for this app run, as `${pluginId}\n${origin}`. */
 const $sessionDenials = atom<ReadonlySet<string>>(new Set())
 
+
 /** A grant names a real web origin: `http(s)://host[:port]`, nothing else.
  *  Opaque origins (`null` for about:blank, data:, sandboxed frames) and
  *  `file://` cannot scope a grant to one site, so they are never offered. */
@@ -104,7 +105,9 @@ export function isGrantableOrigin(origin: string): boolean {
 }
 
 export function hasPreviewScriptGrant(pluginId: string, origin: string): boolean {
-  return !unsavedRevokes.has(pairKey(pluginId, origin)) && (readStoredGrants()[pluginId]?.includes(origin) ?? false)
+  return (
+    !unsavedRevokes.has(pairKey(pluginId, origin)) && (readStoredGrants()[pluginId]?.includes(origin) ?? false)
+  )
 }
 
 export function grantPreviewScript(pluginId: string, origin: string): void {

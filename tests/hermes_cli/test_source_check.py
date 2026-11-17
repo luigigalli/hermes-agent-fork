@@ -404,7 +404,7 @@ def test_never_pushed_branch_keeps_its_pin(installation, pinned_by):
     assert requests == []
 
 
-@pytest.mark.parametrize("merge", ["fast-forward", "rebase"])
+@pytest.mark.parametrize("merge", ["fast-forward", "rebase", "unmerged"])
 def test_deleted_remote_branch_heals_only_when_its_commits_are_in_main(installation, merge):
     from hermes_cli.source_check import check_for_updates
     root, _linked, home, _base, _head, _responses, _requests, git = installation
@@ -417,7 +417,8 @@ def test_deleted_remote_branch_heals_only_when_its_commits_are_in_main(installat
     elif merge == "rebase":
         git("commit", "-q", "--allow-empty", "-m", "upstream moved on")
         git("cherry-pick", "--allow-empty", work)
-    git("push", "-q", "origin", "main")
+    if merge != "unmerged":
+        git("push", "-q", "origin", "main")
     # Upstream deletes the branch; the prune removes the tracking ref but keeps the upstream config.
     git("push", "-q", "origin", "--delete", "pushed")
     git("fetch", "-q", "--prune", "origin")
@@ -425,38 +426,16 @@ def test_deleted_remote_branch_heals_only_when_its_commits_are_in_main(installat
     branch_file = home / "desktop-update.json"
     branch_file.write_text(json.dumps({"branch": "pushed"}))
     status = check_for_updates(install_root=root, home=home, branch_config_path=branch_file)
-    assert "error" not in status, status
-    assert status["branch"] == "main"
-    assert status["targetSha"] == git("rev-parse", "origin/main")
-    assert json.loads(branch_file.read_text())["branch"] == "main"
-
-
-def test_local_only_branch_by_design_answers_external_not_error(installation):
-    """A remote-deleted branch still carrying unmerged local work is custody-by-design: the
-    checker verdicts a managed-external source instead of a failure (t_536c3c97). The pin
-    survives, nothing heals, and the never-pushed twin of this state keeps its error."""
-    from hermes_cli.source_check import check_for_updates
-    root, _linked, home, _base, _head, _responses, _requests, git = installation
-    _bare_origin(installation)
-    git("branch", "custody")
-    _commit_on(git, "custody", "custody work")
-    git("push", "-q", "-u", "origin", "custody")
-    git("push", "-q", "origin", "--delete", "custody")
-    git("fetch", "-q", "--prune", "origin")
-    branch_file = home / "desktop-update.json"
-    branch_file.write_text(json.dumps({"branch": "custody"}))
-    status = check_for_updates(install_root=root, home=home, branch_config_path=branch_file)
-    assert status["update_source"] == "external", status
-    assert status["error"] is None, status
-    assert status["keptLocalBranch"] == "custody"
-    assert status["localOnly"] is True
-    assert "managed externally" in status["message"]
-    assert "not in main" in status["message"]
-    assert status["behind"] is None
-    assert "targetSha" not in status
-    assert json.loads(branch_file.read_text())["branch"] == "custody"
-    git("checkout", "-q", "custody")
-    assert check_for_updates(install_root=root, home=home, force=True)["keptLocalBranch"] == "custody"
+    if merge == "unmerged":
+        assert status["branch"] == "pushed", status
+        assert status["error"] == "branch-local-only"
+        assert "not in main" in status["message"]
+        assert json.loads(branch_file.read_text())["branch"] == "pushed"
+    else:
+        assert "error" not in status, status
+        assert status["branch"] == "main"
+        assert status["targetSha"] == git("rev-parse", "origin/main")
+        assert json.loads(branch_file.read_text())["branch"] == "main"
 
 
 def test_inherited_git_target_cannot_redirect_an_explicit_install(installation, monkeypatch):
@@ -494,20 +473,19 @@ def test_embedded_revision_keeps_https_ref_advertisement_recovery(installation, 
     monkeypatch.setattr("hermes_cli.config.get_project_root", lambda: home)
     monkeypatch.setattr("hermes_cli.config.detect_install_method", lambda root: "nix")
     responses[MAIN_CHANNEL] = (200, source_channel("main", "NousResearch/hermes-agent"))
-    original = subprocess.run
     probes = []
 
     def advertise(args, **kwargs):
-        if "ls-remote" in args:
-            probes.append((args, kwargs))
-            return subprocess.CompletedProcess(args, 0, head + "\trefs/heads/main\n", "")
-        return original(args, **kwargs)
+        probes.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0, head + "\trefs/heads/main\n", "")
 
-    monkeypatch.setattr(subprocess, "run", advertise)
+    # The remote probe runs owned and bounded (stdin is always DEVNULL there).
+    monkeypatch.setattr("hermes_cli._subprocess_compat.bounded_probe_run", advertise)
     assert check_for_updates(home=home)["behind"] == 0
     assert len(probes) == 1
+    assert "ls-remote" in probes[0][0]
     assert "https://github.com/NousResearch/hermes-agent.git" in probes[0][0]
-    assert probes[0][1]["stdin"] == subprocess.DEVNULL
+    assert probes[0][1]["owned"] is True
     assert probes[0][1]["env"]["GIT_TERMINAL_PROMPT"] == "0"
 
 
@@ -784,20 +762,19 @@ def test_runtime_lookup_has_one_deadline_with_bounded_parallel_reads(installatio
 @pytest.mark.parametrize("runtime", [True, False])
 def test_a_release_with_the_state_store_inside_the_package_is_judged_by_its_package_modules(
         installation, runtime):
-    """After the state store moves under ``src/hermes_agent/`` a root compat shell stays behind. The
+    """After the state store moves under ``hermes_agent/`` a root compat shell stays behind. The
     verdict must come from the package's modules, which a top-level tree listing does not show."""
     from hermes_cli import source_check
     from hermes_state_common import SCHEMA_SQL
 
     _root, _linked, home, _base, sha, responses, requests, _git = installation
-    shell, store = "hermes_state.py", "src/hermes_agent/hermes_state/common.py"
+    shell, store = "hermes_state.py", "hermes_agent/hermes_state/common.py"
     trees = "/repos/fixture/fork/git/trees"
     # A tree listing is one directory, as GitHub answers without ``recursive``; a release's full
     # recursive listing is several MiB, beyond what the reader takes in one response.
     responses[f"{trees}/{sha}"] = (200, {"truncated": False, "tree": [
-        {"path": shell, "type": "blob"}, {"path": "src", "type": "tree", "sha": "t-src"},
+        {"path": shell, "type": "blob"}, {"path": "hermes_agent", "type": "tree", "sha": "t-pkg"},
         {"path": "pad", "type": "blob", "size": 3 * 1024 * 1024}]})
-    responses[f"{trees}/t-src"] = (200, {"tree": [{"path": "hermes_agent", "type": "tree", "sha": "t-pkg"}]})
     responses[f"{trees}/t-pkg"] = (200, {"tree": [{"path": "hermes_state", "type": "tree", "sha": "t-state"}]})
     responses[f"{trees}/t-state"] = (200, {"tree": [{"path": "common.py", "type": "blob"}]})
     responses[f"/fixture/fork/{sha}/{shell}"] = (200, "from hermes_agent.compat import finder\n")

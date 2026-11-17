@@ -15,16 +15,12 @@ class Channel {
   }
 
   postMessage(data: unknown) {
-    if (!Channel.open.has(this)) {
-      throw new DOMException('BroadcastChannel is closed', 'InvalidStateError')
-    }
+    if (!Channel.open.has(this)) {throw new DOMException('BroadcastChannel is closed', 'InvalidStateError')}
 
     for (const peer of Channel.open) {
       if (peer !== this && peer.name === this.name) {
         queueMicrotask(() => {
-          if (Channel.open.has(peer)) {
-            peer.onmessage?.(new MessageEvent('message', { data }))
-          }
+          if (Channel.open.has(peer)) {peer.onmessage?.(new MessageEvent('message', { data }))}
         })
       }
     }
@@ -54,9 +50,7 @@ export function browserOpensWebappWindows({ blocked = false } = {}) {
   const channels = stubBroadcastChannels()
 
   const open = vi.spyOn(window, 'open').mockImplementation((url, _target, features) => {
-    if (blocked) {
-      return null
-    }
+    if (blocked) {return null}
 
     queueMicrotask(() => {
       const opener = window.location.href

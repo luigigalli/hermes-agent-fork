@@ -25,7 +25,7 @@ from agent.secret_sources.base import (
     SECRET_SOURCE_API_VERSION, ErrorKind, FetchResult, SecretSource, is_valid_env_name,
     reset_source_environment, set_source_environment,
 )
-from hermes_constants import hermes_home_key, normalize_scope
+from hermes_constants import hermes_home_key, is_launch_only_env_key, normalize_scope
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,6 @@ class SourceReport:
     skipped_claimed: list[str] = field(default_factory=list)    # earlier source won
     skipped_protected: list[str] = field(default_factory=list)  # bootstrap-auth guard
     skipped_invalid: list[str] = field(default_factory=list)    # bad env-var name
-    skipped_placeholder: list[str] = field(default_factory=list)  # D38: a masked value never lands
 
 
 @dataclass
@@ -341,7 +340,7 @@ class _Applier:
         if not is_valid_env_name(var):
             sr.skipped_invalid.append(var)
             return False
-        if var in self.protected:
+        if var in self.protected or is_launch_only_env_key(var):
             sr.skipped_protected.append(var)
             return False
         if var in self.claimed:
@@ -349,15 +348,6 @@ class _Applier:
             self.report.conflicts.append(f"{var}: kept value from {self.claimed[var]}; "
                                          f"{source.name} also supplies it (first source wins — "
                                          "remove one binding or reorder secrets.sources)")
-            return False
-        # D38: guard against placeholder/masked values ("***", "****", empty-mask).
-        # A source that returns a placeholder must never write it to .env or os.environ;
-        # skip it loudly and never apply it to runtime-env either.
-        if value in ("***", "****") or not value.strip():
-            sr.skipped_placeholder.append(value)
-            logger.warning(
-                "Secret source %s supplied a placeholder/masked value for %s; skipping write to .env and runtime-env (canonical: failed values scream, never silence)",
-                source.name, var)
             return False
         existed = bool(self.env.get(var))
         if existed and (var in self.preserve or not override):

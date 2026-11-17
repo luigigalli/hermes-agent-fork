@@ -80,7 +80,9 @@ import { $cronSessions, $messagingSessions, $sessions } from '@/store/session'
 import { $unconfirmedPinWrites } from '@/store/session-pin-sync'
 import { $removedSessionIds } from '@/store/session-removal'
 import { runGatewayRestart } from '@/store/system-actions'
-import { requestActiveUpdate } from '@/store/updates'
+import {
+  requestActiveUpdate
+} from '@/store/updates'
 import { canOpenNewWindow, openNewWindow } from '@/store/windows'
 import { luminance } from '@/themes/color'
 import { type ThemeMode, useTheme } from '@/themes/context'
@@ -101,6 +103,7 @@ import {
   SETTINGS_ROUTE,
   STARMAP_ROUTE
 } from '../routes'
+import { BACKUP_SETTINGS_HREF, backupPaletteEntries } from '../settings/backup-palette'
 import { SECTIONS } from '../settings/constants'
 import { type SettingsSearchEntry, settingsSearchTargetQuery } from '../settings/settings-search'
 import { useSettingsSearchCatalog } from '../settings/use-settings-search'
@@ -1030,7 +1033,8 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
             keywords: ['settings', ...(entry.keywords ?? [])],
             label: t.settings.nav[entry.labelKey],
             run: go(settingsTab(entry.tab))
-          }))
+          })),
+          ...backupPaletteEntries(t).map(entry => ({ ...entry, id: `set-${entry.id}`, run: go(BACKUP_SETTINGS_HREF) }))
         ]
       }
     ]
@@ -1343,7 +1347,8 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
             keywords: ['settings', ...(entry.keywords ?? [])],
             label: t.settings.nav[entry.labelKey],
             run: go(settingsTab(entry.tab))
-          }))
+          })),
+          ...backupPaletteEntries(t).map(entry => ({ ...entry, id: `sp-${entry.id}`, run: go(BACKUP_SETTINGS_HREF) }))
         ]
       }
     ]

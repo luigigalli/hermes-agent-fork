@@ -15,8 +15,6 @@ import { translateBots } from './i18n-test-helper'
 // rule in the real stylesheet can theme it: the cascade decides, not a regex
 // over the source text.
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
   const base = await pluginSdkMock(createGroupGateway().host)
 
@@ -27,8 +25,6 @@ vi.mock('@hermes/plugin-sdk', async () => {
   )
 
   return {
-
-    ...actual,
     ...base,
     Button,
     RowButton: Button,

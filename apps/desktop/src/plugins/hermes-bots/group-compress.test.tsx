@@ -15,8 +15,6 @@ const { host } = vi.hoisted(() => ({ host: {} as Record<string, unknown> }))
 const state = { gateway: null as null | ScriptedGateway }
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { pluginSdkMock } = await import('./group-test-utils')
   const base = await pluginSdkMock(host)
   const Passthrough = ({ children }: { children?: ReactNode }) => <>{children}</>
@@ -38,8 +36,6 @@ vi.mock('@hermes/plugin-sdk', async () => {
   )
 
   return {
-
-    ...actual,
     ...base,
     Button,
     RowButton: Button,

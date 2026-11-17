@@ -72,6 +72,20 @@ def _git_run(args: list[str], *, cwd: Optional[Path] = None, timeout: int = 5, t
         return None
 
 
+def remote_git_run(argv: list[str], *, cwd, timeout: float) -> Optional[subprocess.CompletedProcess]:
+    """A git command that talks to a remote, or None when it timed out (spawn failure raises).
+
+    ``ls-remote`` forks ``git remote-https``. The passive update check runs it from a daemon
+    thread, so over a slow network a plain ``subprocess.run`` child outlived the CLI on ``/exit``
+    together with its helper, and a timeout killed only ``git``. Owned (``bounded_probe_run``),
+    the group dies with this process however it exits, and a timeout kills all of it.
+    """
+    from hermes_cli._subprocess_compat import bounded_probe_run
+
+    return bounded_probe_run(argv, timeout=timeout, cwd=str(cwd) if cwd is not None else None,
+                             env=source_git_env(), raise_on_spawn_failure=True, owned=True)
+
+
 def _git_stdout(args: list[str], *, cwd: Path, timeout: int = 5, git: str = "git") -> Optional[str]:
     result = _git_run(args, cwd=cwd, timeout=timeout, git=git)
     if result is None or result.returncode != 0:
@@ -167,8 +181,11 @@ def _branch_tip(repository: str | None, branch: str, root: Path, git: str,
             failure = "api.github.com returned no commit for the branch."
         if branch == "main" and remote == "origin":
             return None, False, failure
-    result = _git_run(["ls-remote", "--exit-code", "--heads", remote, f"refs/heads/{branch}"],
-                      cwd=root, git=git, timeout=10)
+    try:
+        result = remote_git_run([git, "ls-remote", "--exit-code", "--heads", remote, f"refs/heads/{branch}"],
+                                cwd=root, timeout=10)
+    except OSError:
+        result = None
     if result is None:
         return None, False, failure or f"`git ls-remote {remote}` could not run."
     sha = result.stdout.split()[0] if result.returncode == 0 and result.stdout else None
@@ -351,7 +368,7 @@ def _read_runtime_verdict(repository: str, sha: str) -> Optional[bool]:
 
     try:
         # Only the directories STATE_MODULES names, one small listing each (a recursive listing of a
-        # release is several MiB): the root today, src/hermes_agent/ and its hermes_state/ after the move.
+        # release is several MiB): the root today, hermes_agent/ and its hermes_state/ after the move.
         listed: dict[str, list] = {}
         for directory in dict.fromkeys(pattern.rpartition("/")[0] for pattern in STATE_MODULES):
             if not _list_directory(directory, listed, lambda: listing(sha), listing):
@@ -525,15 +542,6 @@ def _check_branch(result: dict, co: _Checkout, selected_branch: str, *,
     if reason:
         detail = ("has never been pushed" if reason == "never-pushed"
                   else "is gone from the remote but has commits that are not in main")
-        if reason == "unmerged":
-            # A local-only branch the remote dropped while unmerged is custody-by-design:
-            # the update source is managed externally, so this is a verdict, not a check
-            # failure; the checkout keeps its pin and self-update stays off (t_536c3c97).
-            result.update(update_source="external", localOnly=True, error=None,
-                          keptLocalBranch=selected_branch,
-                          message=f"Updates are managed externally (gitops custody): branch "
-                                  f"'{selected_branch}' {detail} — no self-update source.")
-            return
         result.update(error="branch-local-only", localOnly=True,
                       message=f"Branch '{selected_branch}' {detail}; keeping it instead of switching to main.")
         return

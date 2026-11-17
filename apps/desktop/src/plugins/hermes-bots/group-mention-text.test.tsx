@@ -10,12 +10,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
 import { GROUP_CHAT_LOCALES } from './group-chat-locales'
-import {
-  classifyGroupMention,
-  groupMentionComponents,
-  groupMentionText,
-  renderGroupMentionText
-} from './group-mention-text'
+import { classifyGroupMention, groupMentionComponents, groupMentionText, renderGroupMentionText } from './group-mention-text'
 import { useBots } from './i18n'
 import { translateBotsIn } from './i18n-test-helper'
 import type { GroupMember } from './types'
@@ -23,13 +18,9 @@ import type { GroupMember } from './types'
 const selectedLocale = vi.hoisted(() => ({ value: 'en' }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom } = await import('nanostores')
 
   return {
-
-    ...actual,
     atom,
     usePluginI18n: () => translateBotsIn(selectedLocale.value),
     host: {
@@ -77,12 +68,10 @@ function TranslatedMentions() {
   const decorate = useMemo(() => groupMentionText(members, b.group), [b.group])
   const { p: Paragraph } = useMemo(() => groupMentionComponents(members, b.group), [b.group])
 
-  return (
-    <>
-      <div>{decorate('@planner @everyone @user')}</div>
-      <Paragraph>@planner @everyone @user</Paragraph>
-    </>
-  )
+  return <>
+    <div>{decorate('@planner @everyone @user')}</div>
+    <Paragraph>@planner @everyone @user</Paragraph>
+  </>
 }
 
 it('updates mention tooltips in both transcript renderers when the locale changes', () => {
@@ -92,11 +81,7 @@ it('updates mention tooltips in both transcript renderers when the locale change
   selectedLocale.value = 'ja'
   view.rerender(<TranslatedMentions />)
 
-  for (const title of [
-    'このグループチャットのボット',
-    'グループチャットの全員',
-    'あなた — グループチャットは人による対応を待っています'
-  ]) {
+  for (const title of ['このグループチャットのボット', 'グループチャットの全員', 'あなた — グループチャットは人による対応を待っています']) {
     expect(screen.getAllByTitle(title)).toHaveLength(2)
   }
 

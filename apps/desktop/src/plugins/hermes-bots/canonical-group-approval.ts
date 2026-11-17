@@ -15,8 +15,7 @@ export function canonicalApprovalPreview(action: CanonicalPendingAction) {
   const labelled = /^<[^>]+> \(/.test(command)
   const actualCommand = labelled ? '' : command
 
-  const matching =
-    Boolean(text(action.request_id)) &&
+  const matching = Boolean(text(action.request_id)) &&
     (!approval?.request_id || approval.request_id === action.request_id) &&
     (!approval?.prompt_id || approval.prompt_id === action.request_id)
 

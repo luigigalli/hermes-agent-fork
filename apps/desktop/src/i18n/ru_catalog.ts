@@ -17,6 +17,9 @@ export const ruCatalog = {
   mostStarred: 'Больше всего звёзд',
   newest: 'Новинки',
   recentlyUpdated: 'Недавно обновлённые',
+  mostUsed: 'Часто используемые',
+  updateAvailable: 'Обновление',
+  updatesAvailable: (count: number) => `Обновления · ${count}`,
   alphabetical: 'Название',
   sortBy: 'Сортировать по',
   seeAll: 'Показать все',
@@ -64,7 +67,8 @@ export const ruCatalog = {
   pinned: 'Проверенный коммит',
   snapshotHint: 'Из каталога Hermes. При просмотре нет обращений к исходным репозиториям.',
   installHint: 'Проверьте исходный код перед установкой. Изменения применяются к новым сессиям.',
-  results: (count: number) => `${count.toLocaleString('ru')} ${resultWord(count)}`,
+  results: (count: number) =>
+    `${count.toLocaleString('ru')} ${resultWord(count)}`,
   back: 'Назад к результатам'
 } satisfies TranslationOverrides['catalog']
 

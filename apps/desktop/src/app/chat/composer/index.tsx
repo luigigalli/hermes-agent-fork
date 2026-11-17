@@ -1,6 +1,14 @@
 import { ComposerPrimitive } from '@assistant-ui/react'
 import { useStore } from '@nanostores/react'
-import { type ClipboardEvent, type FormEvent, type KeyboardEvent, useCallback, useEffect, useMemo, useRef } from 'react'
+import {
+  type ClipboardEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef
+} from 'react'
 
 import { useTourMarker } from '@/app/chat/tour-marker'
 import type { GatewayRequester } from '@/app/contrib/types'
@@ -625,7 +633,8 @@ export function ChatBar({
     // The instruction the user types stays in the input; the pasted source
     // material rides along as a file. Falls back to inline insertion if the
     // attachment can't be created (missing bridge, write failure) so the
-    // paste is never lost.
+    // paste is never lost; a paste rejected as too large is dropped after the
+    // error toast rather than flooding the editor.
     if (onAttachPastedText && shouldConvertPasteToAttachment(pastedText)) {
       const editor = event.currentTarget
 
@@ -1446,8 +1455,7 @@ export function ChatBar({
                   // track past the surface — and every `w-full` child (the fade,
                   // the input/controls row) laid out against that phantom width
                   // and got clipped by overflow-hidden, send button first.
-                  'group/composer-surface relative z-4 isolate grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden rounded-[inherit]',
-                  composerSurfaceRing,
+                  'group/composer-surface relative z-4 isolate grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] overflow-hidden rounded-[inherit]', composerSurfaceRing,
                   COMPOSER_DROP_FADE_CLASS,
                   dragActive && COMPOSER_DROP_ACTIVE_CLASS
                 )}
@@ -1548,12 +1556,7 @@ export function ChatBarFallback() {
       )}
       data-slot="composer-root"
     >
-      <div
-        className={cn(
-          'composer-fallback-surface relative isolate h-(--composer-fallback-height) w-full rounded-[inherit]',
-          composerSurfaceRing
-        )}
-      >
+      <div className={cn('composer-fallback-surface relative isolate h-(--composer-fallback-height) w-full rounded-[inherit]', composerSurfaceRing)}>
         <div aria-hidden className={composerInputBacking} />
       </div>
     </div>

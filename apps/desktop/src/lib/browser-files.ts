@@ -4,7 +4,14 @@ import type { HermesApiRequest } from '@/global'
 import { translateNow } from '@/i18n'
 import { requireBrowserConnection } from '@/lib/browser-connection'
 import { fetchBrowserImage } from '@/lib/browser-image-download'
-import { browserApi, type BrowserBootstrap, FILE_ENDPOINTS, fileEndpointUrl } from '@/lib/browser-transport'
+import {
+  browserApi,
+  type BrowserBootstrap,
+  browserFetchBlob,
+  endpointUrl,
+  FILE_ENDPOINTS,
+  fileEndpointUrl
+} from '@/lib/browser-transport'
 import { clickDownloadLink, downloadBlob, downloadFilename } from '@/lib/download'
 import { notifyError } from '@/store/notifications'
 
@@ -12,12 +19,35 @@ function queryPath(route: string, values: Record<string, boolean | null | string
   const query = new URLSearchParams()
 
   for (const [key, value] of Object.entries(values)) {
-    if (value !== null && value !== undefined) {
-      query.set(key, String(value))
-    }
+    if (value !== null && value !== undefined) {query.set(key, String(value))}
   }
 
   return `${route}?${query.toString()}`
+}
+
+/** Save a file an allow-listed gateway route serves from its own host (a backup archive). Those
+ *  routes take no file ticket: a cookie session follows a plain link, a token session must send
+ *  its header, so the body is fetched. */
+async function saveExplicitDownload(
+  bootstrap: BrowserBootstrap,
+  payload: { downloadPath?: string; suggestedName?: string },
+  profile: null | string
+): Promise<boolean> {
+  const path = String(payload.downloadPath)
+
+  if (!path.startsWith('/api/ops/backup/download?')) {
+    throw new Error('Unsupported gateway download route')
+  }
+
+  if (!bootstrap.token) {
+    clickDownloadLink(endpointUrl(path, bootstrap.basePath, profile).href, payload.suggestedName ?? '')
+
+    return true
+  }
+
+  downloadBlob(await browserFetchBlob(bootstrap, { path, profile }), payload.suggestedName || 'download')
+
+  return true
 }
 
 interface BrowserFilesOptions {
@@ -99,13 +129,19 @@ export function createBrowserFilesBridge({
         })
       ).href
     },
-    readDir: (path: string) => fsGet<Awaited<ReturnType<Window['hermesDesktop']['readDir']>>>('list', path),
+    readDir: (path: string) =>
+      fsGet<Awaited<ReturnType<Window['hermesDesktop']['readDir']>>>('list', path),
     readFileDataUrl: readDataUrl,
     readFileDataUrlForAttach: readDataUrl,
     readFileText: (path: string) =>
       fsGet<Awaited<ReturnType<Window['hermesDesktop']['readFileText']>>>('read-text', path),
     saveGatewayFile: async payload => {
       const target = owner(payload.connectionId)
+
+      if (payload.downloadPath) {
+        return { saved: await saveExplicitDownload(target.bootstrap, payload, payload.profile ?? currentProfile()) }
+      }
+
       const query = { path: payload.path, profile: payload.profile ?? currentProfile(), session_id: payload.sessionId }
 
       // Validate before handing the transfer to the browser so missing or

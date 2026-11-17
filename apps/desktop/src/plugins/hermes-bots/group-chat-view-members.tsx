@@ -94,12 +94,6 @@ async function commitGroupChatRoster(group: string, previous: RosterRow[], seate
     ...stickyGroupEngine(room, groupDrivenByDesktop(room, previous, connectionId) ? { engine: 'desktop' } : undefined),
     members: durableGroupChatMembers(seated),
     heldMessages: without(room.heldMessages, key => key),
-    // Merk patch: remember where the log was when each member left, so a
-    // re-add's other-threads digest starts from that point (clean restart).
-    digestCutoffs: {
-      ...room.digestCutoffs,
-      ...Object.fromEntries(removed.map(member => [groupMemberKey(member), (room.log || []).length]))
-    },
     holds: without(room.holds, key => key),
     stranded: without(room.stranded, key => key),
     sessions: without(room.sessions, groupSessionMemberKey),
@@ -122,9 +116,7 @@ function onOtherMachine(bot: RosterRow, connectionId: null | string): boolean {
 }
 
 function memberSaveFailed(bot: RosterRow, meta: Record<string, BotMeta>): Error {
-  return new Error(
-    botsText().crossGateway.memberSaveFailed(connectionName(bot), displayName(bot, botRosterMeta(bot, meta)))
-  )
+  return new Error(botsText().crossGateway.memberSaveFailed(connectionName(bot), displayName(bot, botRosterMeta(bot, meta))))
 }
 
 /** A remote row's write that provably did not land on its machine. An older
@@ -202,9 +194,7 @@ async function reconcileStuckWrites(group: string, previous: RosterRow[], stuck:
 
   for (const write of stuck) {
     const server = await readBotMetaFromServer(write.bot)
-    const groups = server
-      ? botGroups(server)
-      : botGroups(groupMembershipPatch(botRosterMeta(write.bot, $botMeta.get()), group, write.enabled))
+    const groups = server ? botGroups(server) : botGroups(groupMembershipPatch(botRosterMeta(write.bot, $botMeta.get()), group, write.enabled))
     await setLocalBotMeta(write.bot, { group: groups[0] || null, groups })
 
     const key = botRosterKey(write.bot)
@@ -244,10 +234,7 @@ async function writeMembershipChanges(group: string, writes: MembershipWrite[], 
         const held = stuck[0].bot
 
         throw new Error(
-          botsText().crossGateway.memberRollbackFailed(
-            connectionName(held),
-            displayName(held, botRosterMeta(held, meta))
-          )
+          botsText().crossGateway.memberRollbackFailed(connectionName(held), displayName(held, botRosterMeta(held, meta)))
         )
       }
 

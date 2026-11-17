@@ -142,8 +142,7 @@ export function NarrowOverlays() {
           // The browser host's titlebar Hide names the zone (its alias) while a
           // zone mate may be showing; native close names one pane, as on main.
           const currentTree = $layoutTree.get()
-          const targetZone =
-            currentTree && hostHas('narrowOverlayChrome') ? findGroupOfPane(currentTree, match.id) : null
+          const targetZone = currentTree && hostHas('narrowOverlayChrome') ? findGroupOfPane(currentTree, match.id) : null
 
           return current && (current.id === match.id || targetZone?.panes.includes(current.id)) ? null : current
         }
@@ -202,11 +201,7 @@ export function NarrowOverlays() {
     return shown.length > 0 ? shown : [revealed]
   })()
 
-  const tabKeyboardProps = usePaneTabKeyboard(
-    zonePanes.map(pane => pane.id),
-    revealed?.id ?? '',
-    overlayRef
-  )
+  const tabKeyboardProps = usePaneTabKeyboard(zonePanes.map(pane => pane.id), revealed?.id ?? '', overlayRef)
 
   if (!narrow || solo || collapsibles.length === 0) {
     return null

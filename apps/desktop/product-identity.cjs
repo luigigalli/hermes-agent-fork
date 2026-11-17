@@ -9,8 +9,7 @@
 'use strict'
 
 const variants = {
-  // Convergence rebrand (decisione user 26/9): appId com.nousresearch.convergence
-  '': { display: 'Convergence', kebab: 'convergence', pascal: 'Convergence' },
+  '': { display: 'Hermes', kebab: 'hermes', pascal: 'Hermes' },
   light: {
     display: 'Hermes Light',
     kebab: 'hermes-light',
@@ -55,7 +54,7 @@ const displayName = buildCommit
 
 const kebabSuffix = buildCommit ? `-${buildCommit}` : canary ? '-canary' : ''
 const pascalSuffix = buildCommit ? `Commit${buildCommit}` : canary ? 'Canary' : ''
-const cliName = `${name === variants['bundled'] ? 'hermes' : name.kebab}${kebabSuffix}`
+const cliName = `${light ? 'hermes-light' : 'hermes'}${kebabSuffix}`
 if (store && (canary || buildCommit)) {
   throw new Error('Store packaging is only eligible for stable releases')
 }

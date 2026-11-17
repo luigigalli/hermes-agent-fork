@@ -27,7 +27,12 @@ import {
   type SessionControlHeartbeat
 } from '@/store/session-control'
 
-import { type ConfirmState, formatCountdown, formatHeartbeatInterval, useCountdownClock } from './session-control-utils'
+import {
+  type ConfirmState,
+  formatCountdown,
+  formatHeartbeatInterval,
+  useCountdownClock
+} from './session-control-utils'
 
 interface HeartbeatSectionProps {
   heartbeat: SessionControlHeartbeat
@@ -35,6 +40,7 @@ interface HeartbeatSectionProps {
   pendingAction: SessionControlAction | null
   onFeedback: (error: string | null, success: string | null) => void
 }
+
 
 export const SessionControlHeartbeatSection = memo(function SessionControlHeartbeatSection({
   heartbeat,

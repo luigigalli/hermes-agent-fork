@@ -216,7 +216,6 @@ describe('preview script wake scope', () => {
         { kind: 'type', selector: 'input', text: 'x'.repeat(10_000) },
         controller.signal
       )
-
       await vi.advanceTimersByTimeAsync(9_000)
       expect(live.size).toBeGreaterThan(0)
       controller.abort('interrupted')

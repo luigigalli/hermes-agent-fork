@@ -3,13 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 const { request } = vi.hoisted(() => ({ request: vi.fn() }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom } = await import('nanostores')
 
-  return {
-    ...actual,
- atom, host: { request } }
+  return { atom, host: { request } }
 })
 
 vi.mock('./shared', () => ({ getPluginCtx: () => null, ID: 'hermes-bots' }))

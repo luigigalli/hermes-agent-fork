@@ -1,7 +1,11 @@
 import { BrowserWindow, ipcMain, webContents } from 'electron'
 
 import { notePreviewGuestHidden } from './preview-guest-offscreen'
-import { beginPreviewGuestActivity, endPreviewGuestActivity, executePreviewGuestScript } from './preview-guest-throttle'
+import {
+  beginPreviewGuestActivity,
+  endPreviewGuestActivity,
+  executePreviewGuestScript
+} from './preview-guest-throttle'
 
 export function registerPreviewGuestIpc(holdWindow: (owner: BrowserWindow) => () => void): void {
   // Kept-alive, off-screen pages must not receive focused-guest gestures.
@@ -20,8 +24,10 @@ export function registerPreviewGuestIpc(holdWindow: (owner: BrowserWindow) => ()
       throw new Error('Preview owner window is unavailable')
     }
 
-    return beginPreviewGuestActivity(event.sender, webContents.fromId(webContentsId as number) ?? undefined, () =>
-      holdWindow(owner)
+    return beginPreviewGuestActivity(
+      event.sender,
+      webContents.fromId(webContentsId as number) ?? undefined,
+      () => holdWindow(owner)
     )
   })
 

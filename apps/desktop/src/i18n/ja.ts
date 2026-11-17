@@ -30,9 +30,9 @@ import { jaUpdateChannel } from './ja_update_channel'
 
 export const jaOverrides = {
   gatewayGroupOpen: {
-    opening: 'グループチャットを開いています…',
-    lookupFailed: 'ゲートウェイでこのグループを検索できませんでした。もう一度お試しください。',
-    missing: 'このグループチャットはもう存在しません。'
+    opening: "グループチャットを開いています…",
+    lookupFailed: "ゲートウェイでこのグループを検索できませんでした。もう一度お試しください。",
+    missing: "このグループチャットはもう存在しません。"
   },
   catalog: jaCatalog,
   connectors: jaConnectors.connectors,
@@ -389,6 +389,8 @@ export const jaOverrides = {
       mcp: 'MCP',
       archivedChats: 'アーカイブ済みチャット',
       sessions: 'セッション',
+      backup: 'バックアップと移行',
+      backupOnly: 'バックアップ',
       about: '情報',
       billing: '請求',
       notifications: '通知',
@@ -926,7 +928,10 @@ export const jaOverrides = {
       keepAwakeAlways: '常に',
       voiceShortcutHintTitle: '音声録音ショートカット',
       voiceShortcutHintDesc:
-        '「設定 → キーボードショートカット」で音声録音ショートカット（「Start / stop voice conversation」）を設定します。voice.record_key は CLI と TUI 専用です。'
+        '「設定 → キーボードショートカット」で音声録音ショートカット（「Start / stop voice conversation」）を設定します。voice.record_key は CLI と TUI 専用です。',
+      desktopReadAloudTitle: 'このアプリで応答を読み上げる',
+      desktopReadAloudDesc:
+        'Desktop で完了した各応答を読み上げます。入力欄のボタンと同じスイッチで、開いているすべてのウィンドウに適用され、オフにすると読み上げ中の応答も止まります。下の「応答を読み上げる」はメッセージングと CLI 用です。'
     },
     hudModifier: {
       title: 'キーをタップして HUD を呼び出す',
@@ -1308,14 +1313,12 @@ export const jaOverrides = {
         enabledTitle: '実プロファイルブラウジング：オン',
         enabledMessage: '新しいセッションは既定ブラウザプロファイルのスナップショットでブラウジングします。',
         disabledTitle: '実プロファイルブラウジング：オフ',
-        disabledMessage:
-          'プロファイルのスナップショットは削除され、アプリ内ブラウザもそのログインから外れます。新しいセッションはクリーンなブラウザを使用します。',
+        disabledMessage: 'プロファイルのスナップショットは削除され、アプリ内ブラウザもそのログインから外れます。新しいセッションはクリーンなブラウザを使用します。',
         failedSave: '実プロファイル設定を保存できませんでした',
         reimportSignins: 'ログイン情報を再インポート',
         signinsImportedTitle: 'アプリ内ブラウザのログイン',
         signinsImported: count => `ブラウザプロファイルの Cookie ${count} 件でアプリ内ブラウザにログインしました。`,
-        signinsRemote:
-          'このバックエンドは別のマシンで動作しているため、そのブラウザプロファイルはアプリ内ブラウザにインポートされません。',
+        signinsRemote: 'このバックエンドは別のマシンで動作しているため、そのブラウザプロファイルはアプリ内ブラウザにインポートされません。',
         signinsFailed: 'アプリ内ブラウザにログイン情報をインポートできませんでした',
         prompt: {
           title: 'サイトにログインしたまま利用',
@@ -1596,7 +1599,12 @@ export const jaOverrides = {
     noModelUsage: 'モデルの使用履歴はまだありません。',
     topSkills: 'よく使うスキル',
     noSkillActivity: 'スキルのアクティビティはまだありません。',
-    actions: count => `${count} アクション`
+    actions: count => `${count} アクション`,
+    maintenance: {
+      debugShareConfirm: 'デバッグレポートを公開ペーストにアップロードしますか？',
+      debugShareConfirmDesc:
+        'サマリーを公開ペーストサービスにアップロードします：Hermes・Python・OS のバージョン、接続中のプラットフォームとツールセットの名前、設定キー名（値は含みません）、警告/エラーの件数。ログ行やメッセージ本文は含まれません。ペーストは 6 時間後に自動削除されます。paste.rs に接続できない場合は代替の dpaste.com が使われ、1 日間公開されたままとなり、早期に削除できません。'
+    }
   },
 
   messaging: {
@@ -1632,8 +1640,7 @@ export const jaOverrides = {
     relayLink: {
       title: 'Team Gateway',
       badge: 'ボットトークン不要',
-      intro: (platform: string) =>
-        `${platform} は共有の Hermes ボット経由でこのエージェントに届きます。${platform} アカウントをリンクし、ボットにメッセージを送るとエージェントと話せます。`,
+      intro: (platform: string) => `${platform} は共有の Hermes ボット経由でこのエージェントに届きます。${platform} アカウントをリンクし、ボットにメッセージを送るとエージェントと話せます。`,
       link: (platform: string) => `${platform} をリンク`,
       linkAnother: (platform: string) => `別の ${platform} アカウントをリンク`,
       linkedAccounts: 'リンク済みアカウント',
@@ -1646,19 +1653,15 @@ export const jaOverrides = {
       copied: 'コピーしました',
       copyFailed: (command: string) => `コピーできませんでした。${command} と入力してください。`,
       waiting: 'ボットがメッセージを受け取るのを待っています。コードは1回だけ使えます。',
-      linked: (platform: string) =>
-        `${platform} アカウントをリンクしました。ボットにメッセージを送るとエージェントと話せます。`,
+      linked: (platform: string) => `${platform} アカウントをリンクしました。ボットにメッセージを送るとエージェントと話せます。`,
       expired: 'コードは使われる前に期限切れになりました。新しいコードを取得してもう一度お試しください。',
-      refused: (platform: string) =>
-        `${platform} がリンクを拒否しました。新しいコードを取得してもう一度お試しください。`,
+      refused: (platform: string) => `${platform} がリンクを拒否しました。新しいコードを取得してもう一度お試しください。`,
       qrAlt: (platform: string) => `共有 ${platform} ボットの QR コード`,
       managed: 'Team Gateway が管理',
-      managedNote: (platform: string) =>
-        `このインスタンスではメッセージを Team Gateway が扱うため、ゲートウェイは起動のたびに ${platform} の直接接続をオフにします。リレーと併用するには、ゲートウェイの環境に GATEWAY_RELAY_ALLOW_DIRECT_PLATFORMS=true を設定してください（直接接続があるとインスタンスがゼロまでスケールダウンできず、メッセージが二重に届くことがあります）。`,
+      managedNote: (platform: string) => `このインスタンスではメッセージを Team Gateway が扱うため、ゲートウェイは起動のたびに ${platform} の直接接続をオフにします。リレーと併用するには、ゲートウェイの環境に GATEWAY_RELAY_ALLOW_DIRECT_PLATFORMS=true を設定してください（直接接続があるとインスタンスがゼロまでスケールダウンできず、メッセージが二重に届くことがあります）。`,
       managedIntro: 'このエージェントのアカウントは Nous Portal からリンクします。',
       openPortal: 'Nous Portal でアカウントをリンク',
-      noNewAccount: (platform: string) =>
-        `コードは無効になり、新しいアカウントは表示されませんでした。${platform} アカウントが一覧にない場合は、新しいコードを取得してもう一度お試しください。`
+      noNewAccount: (platform: string) => `コードは無効になり、新しいアカウントは表示されませんでした。${platform} アカウントが一覧にない場合は、新しいコードを取得してもう一度お試しください。`
     },
     telegramQr: {
       title: 'Telegram ボットの接続方法を選択',
@@ -2428,7 +2431,7 @@ export const jaOverrides = {
       '/topup': 'Nous の残高を表示し、請求を管理',
       '/platform': '問題のあるゲートウェイプラットフォームを一時停止、再開、一覧表示',
       '/version': 'Hermes Agent のバージョンを表示',
-      '/debug': 'デバッグレポートを作成',
+      '/debug': 'デバッグレポート（バージョン、設定キー名、エラー件数。ログ本文なし）: まずプライバシー通知を表示し、/debug upload でリンクを共有',
       '/model': 'このセッションのモデルを切り替え'
     },
     hotkeyDescs: {

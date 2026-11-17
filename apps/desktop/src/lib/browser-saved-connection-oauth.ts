@@ -38,7 +38,6 @@ async function savedConnectionFor(
   identity?: DesktopOauthLoginOptions
 ): Promise<string> {
   const rows = await saved.gateways()
-
   const known = rows.find(row =>
     identity?.connectionId ? row.id === identity.connectionId : sameUrl(row.url, remoteUrl)
   )

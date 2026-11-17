@@ -118,7 +118,7 @@ test('nonstable runtime pins userData before the app name can change', async ():
 })
 
 test.each([
-  [undefined, 'Convergence', 'convergence', 'latest', 'canary'],
+  [undefined, 'Hermes', 'hermes', 'latest', 'canary'],
   ['bundled', 'Hermes Agent', 'hermes', 'latest', 'canary'],
   ['light', 'Hermes Light', 'hermes-light', 'light', 'light-canary']
 ] as const)(
@@ -227,7 +227,9 @@ test('packaging isolates boot metadata and executable names without renaming rel
     assert.notEqual(config.extraMetadata.name, stableIdentity.appNamePascal)
     assert.equal(config.win.executableName, identity.windowsExecutableName)
 
-    const { AppInfo }: { AppInfo: typeof BuilderAppInfo } = require('app-builder-lib')
+    const {
+      AppInfo
+    }: { AppInfo: typeof BuilderAppInfo } = require('app-builder-lib')
 
     const appInfo: BuilderAppInfo = new AppInfo(
       { config, metadata: { ...pkg, ...config.extraMetadata } } as Packager,
@@ -252,7 +254,7 @@ test('packaging isolates boot metadata and executable names without renaming rel
     const artifact: ReturnType<typeof appIdentity> = appIdentity(fileURLToPath(new URL('../', import.meta.url)))
     assert.equal(artifact.name, identity.artifactNamePascal)
     assert.equal(artifact.identity.msixAppIdWithOrg, config.msix.identityName)
-    assert.deepEqual(config.protocols[0].schemes, ['convergence'])
+    assert.deepEqual(config.protocols[0].schemes, ['hermes'])
 
     if (build !== 'canary') {
       assert.equal(config.publish, null)

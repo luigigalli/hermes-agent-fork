@@ -24,12 +24,10 @@ describe('local client version source', (): void => {
       return 'Hermes Agent v0.21.5+6644.gb412ee9 (local)\n'
     })
 
-    await expect(
-      resolveLocalRuntimeVersion('/isolated/hermes', '/isolated/home', {
-        launcher: '/isolated/hermes/.hermes/bin/hermes',
-        run
-      })
-    ).resolves.toBe('0.21.5+6644.gb412ee9')
+    await expect(resolveLocalRuntimeVersion('/isolated/hermes', '/isolated/home', {
+      launcher: '/isolated/hermes/.hermes/bin/hermes',
+      run
+    })).resolves.toBe('0.21.5+6644.gb412ee9')
     expect(run).toHaveBeenCalledTimes(1)
   })
 
@@ -38,20 +36,16 @@ describe('local client version source', (): void => {
       throw new Error('timeout')
     })
 
-    await expect(
-      resolveLocalRuntimeVersion('/isolated/hermes', '/isolated/home', {
-        launcher: '/isolated/hermes/.hermes/bin/hermes',
-        run
-      })
-    ).resolves.toBe('')
+    await expect(resolveLocalRuntimeVersion('/isolated/hermes', '/isolated/home', {
+      launcher: '/isolated/hermes/.hermes/bin/hermes',
+      run
+    })).resolves.toBe('')
   })
 
   it('does not invoke a missing installation launcher', async (): Promise<void> => {
     const run: VersionProbeRunner = vi.fn()
 
-    await expect(
-      resolveLocalRuntimeVersion('/isolated/hermes', '/isolated/home', { launcher: null, run })
-    ).resolves.toBe('')
+    await expect(resolveLocalRuntimeVersion('/isolated/hermes', '/isolated/home', { launcher: null, run })).resolves.toBe('')
     expect(run).not.toHaveBeenCalled()
   })
 
@@ -78,9 +72,7 @@ describe('local client version source', (): void => {
 
         for (const _call of ['first', 'cached']) {
           let timerFired = false
-          const timer = setTimeout(() => {
-            timerFired = true
-          }, 10)
+          const timer = setTimeout(() => { timerFired = true }, 10)
           const startedAt: number = Date.now()
           const pending: Promise<string> = resolveLocalRuntimeVersion(root, home, { isWindows: false })
 

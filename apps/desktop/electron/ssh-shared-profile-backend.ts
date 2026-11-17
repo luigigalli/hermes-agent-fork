@@ -67,7 +67,8 @@ export function sharedSshProfiles(
   backends: ReadonlyArray<{ descriptor: unknown; profileLabel: null | string }>
 ): string[] | undefined {
   const base = backends.find(({ profileLabel }) => (profileLabel || 'default') === 'default')?.descriptor as
-    { baseUrl?: string } | undefined
+    | { baseUrl?: string }
+    | undefined
 
   const served = base ? servedProfiles.get(`${connectionId}\0${base.baseUrl ?? ''}`) : undefined
 
@@ -82,11 +83,7 @@ function profileNames(body: unknown): string[] {
   }
 
   return profiles
-    .map(entry =>
-      String((entry as { name?: unknown } | null)?.name ?? '')
-        .trim()
-        .toLowerCase()
-    )
+    .map(entry => String((entry as { name?: unknown } | null)?.name ?? '').trim().toLowerCase())
     .filter(Boolean)
 }
 
@@ -108,9 +105,7 @@ export async function resolveSharedSshProfileBackend<T extends { baseUrl?: strin
   profile: null | string | undefined,
   deps: SharedSshProfileDeps<T>
 ): Promise<(T & SharedSshProfileScope) | null> {
-  const key = String(profile ?? '')
-    .trim()
-    .toLowerCase()
+  const key = String(profile ?? '').trim().toLowerCase()
 
   if (source.kind !== 'ssh' || String(source.remoteProfile ?? '').trim() || !key || key === 'default') {
     return null

@@ -19,7 +19,9 @@ export function bind<T extends object>(t: PluginTranslate, template: T, prefix =
     if (typeof value === 'string') {
       Object.defineProperty(out, key, { enumerable: true, get: () => t(path) })
     } else {
-      out[key] = typeof value === 'function' ? (...args: unknown[]) => t(path, ...args) : bind(t, value as object, path)
+      out[key] = typeof value === 'function'
+        ? (...args: unknown[]) => t(path, ...args)
+        : bind(t, value as object, path)
     }
   }
 

@@ -25,9 +25,7 @@ describe('useComposerActions drop warnings', () => {
     let attached = true
 
     await act(async () => {
-      attached = await result.current.attachDroppedItems([
-        { file: new File([], 'shots.png'), isDirectory: true, path: '' }
-      ])
+      attached = await result.current.attachDroppedItems([{ file: new File([], 'shots.png'), isDirectory: true, path: '' }])
     })
 
     expect(attached).toBe(false)
@@ -56,13 +54,7 @@ describe('useComposerActions drop warnings', () => {
         activeSessionId: null,
         currentCwd: '/w',
         requestGateway: vi.fn(),
-        scope: {
-          add,
-          remove: vi.fn(() => null),
-          target: 'main',
-          update: vi.fn(() => true),
-          updateIfCurrent: vi.fn(() => true)
-        }
+        scope: { add, remove: vi.fn(() => null), target: 'main', update: vi.fn(() => true), updateIfCurrent: vi.fn(() => true) }
       })
     )
 
@@ -107,13 +99,7 @@ describe('useComposerActions drop warnings', () => {
         activeSessionId: null,
         currentCwd: '/w',
         requestGateway: vi.fn(),
-        scope: {
-          add,
-          remove: vi.fn(() => null),
-          target: 'main',
-          update: vi.fn(() => true),
-          updateIfCurrent: vi.fn(() => true)
-        }
+        scope: { add, remove: vi.fn(() => null), target: 'main', update: vi.fn(() => true), updateIfCurrent: vi.fn(() => true) }
       })
     )
 
@@ -162,8 +148,6 @@ describe('useComposerActions drop warnings', () => {
     expect(warning?.message).toContain('…')
     expect(warning?.message).toContain('Upload request is too large')
     expect(warning?.message).toMatch(/and \d+ more$/)
-    expect(warning?.detail?.split('\n')).toEqual(
-      names.map(name => `Could not attach ${name}: Upload request is too large`)
-    )
+    expect(warning?.detail?.split('\n')).toEqual(names.map(name => `Could not attach ${name}: Upload request is too large`))
   })
 })

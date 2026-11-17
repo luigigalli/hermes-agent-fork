@@ -148,8 +148,7 @@ const updateTargetLabel = (agent: AgentPluginRow) =>
   agent.catalog_version ?? agent.catalog_sha?.slice(0, 8) ?? shortTarget(agent.update_target)
 
 /** A full commit shortens to 8 characters; a feed version stays as it is. */
-const shortTarget = (target?: string) =>
-  target && /^[0-9a-f]{40}$/i.test(target) ? target.slice(0, 8) : (target ?? '')
+const shortTarget = (target?: string) => (target && /^[0-9a-f]{40}$/i.test(target) ? target.slice(0, 8) : (target ?? ''))
 
 function KindBadge({ kind }: { kind: PackageKind }) {
   const { t } = useI18n()
@@ -665,7 +664,11 @@ export const PluginsTab = memo(function PluginsTab({
           sha: pkg.agent?.installed_sha ?? pkg.desktop?.packageOrigin?.sha ?? '',
           version: pkg.agent?.version ?? ''
         }))
-      ).map(entry => ({ ...entry, id: `installed:${entry.identifier}` })),
+      ).map(entry => ({
+        ...entry,
+        id: `installed:${entry.identifier}`,
+        updateAvailable: packages.some(pkg => pkg.key === entry.identifier && pkg.agent?.update_available)
+      })),
     [packages]
   )
 

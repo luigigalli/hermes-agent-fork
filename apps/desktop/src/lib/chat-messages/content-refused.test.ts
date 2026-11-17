@@ -13,7 +13,10 @@ import { chatMessageText, toChatMessages } from '.'
 describe('content_refused hydration', () => {
   const notice = "This message was refused by the model's safety filter — try a different query."
 
-  const refusedRow = (content: string, displayMetadata: unknown): SessionMessage => ({
+  const refusedRow = (
+    content: string,
+    displayMetadata: unknown
+  ): SessionMessage => ({
     role: 'user',
     content,
     display_kind: 'content_refused',
@@ -47,7 +50,9 @@ describe('content_refused hydration', () => {
   })
 
   it('reads a notice from display_metadata served as raw JSON text (older backend)', () => {
-    const [message] = toChatMessages([refusedRow('blocked text', JSON.stringify({ content_refused: { notice } }))])
+    const [message] = toChatMessages([
+      refusedRow('blocked text', JSON.stringify({ content_refused: { notice } }))
+    ])
 
     expect(message.role).toBe('system')
     expect(message.contentRefused).toEqual({ notice })

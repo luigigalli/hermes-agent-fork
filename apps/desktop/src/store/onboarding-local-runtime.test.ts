@@ -4,12 +4,7 @@ import { $localModelsEnabled } from '@/store/local-models-flag'
 import * as notifications from '@/store/notifications'
 import { markOnboardingDecided } from '@/store/onboarding-presence'
 
-import {
-  $desktopOnboarding,
-  type DesktopOnboardingState,
-  type OnboardingContext,
-  refreshOnboarding
-} from './onboarding'
+import { $desktopOnboarding, type DesktopOnboardingState, type OnboardingContext, refreshOnboarding } from './onboarding'
 
 markOnboardingDecided()
 

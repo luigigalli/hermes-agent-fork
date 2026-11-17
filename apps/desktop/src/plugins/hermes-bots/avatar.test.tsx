@@ -21,13 +21,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { blobatarSvgMock } = vi.hoisted(() => ({ blobatarSvgMock: vi.fn() }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom } = await import('nanostores')
 
   return {
-
-    ...actual,
     atom,
     blobatarSvg: (seed: string, opts: unknown) => blobatarSvgMock(seed, opts) as string,
     createBudgetedLoop: undefined,
@@ -130,7 +126,7 @@ describe('rendering a blob face', () => {
     // still finds the face by the exact name.
     const { BotFace } = await import('./avatar')
 
-    for (const name of ['x"><img src=x onerror="globalThis.botFaceRan=1"><b title="', "a$&b$'c"]) {
+    for (const name of ['x"><img src=x onerror="globalThis.botFaceRan=1"><b title="', 'a$&b$\'c']) {
       const { container, unmount } = render(<BotFace color="#38bdf8" name={name} shape="blobatar" size={56} />)
 
       expect(container.querySelector('img')).toBeNull()

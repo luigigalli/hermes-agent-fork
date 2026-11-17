@@ -179,7 +179,6 @@ export function useAgentTerminal({ active, id, procId }: { active: boolean; id: 
 
       // Stream live output straight into the terminal (replays backlog on attach).
       unregister = registerAgentTerminalWriter(procId, chunk => term.write(chunk))
-
       // Closing can evict the backlog while the registry stays unchanged. Pin
       // the writer before recovering its snapshot so retention cannot evict it.
       for (const list of Object.values($backgroundStatusBySession.get())) {
@@ -188,11 +187,9 @@ export function useAgentTerminal({ active, id, procId }: { active: boolean; id: 
         if (item) {
           seedAgentTerminalCommand(procId, item.title)
           syncAgentTerminalSnapshot(procId, item.output ?? '')
-
           break
         }
       }
-
       unregisterReader = registerTerminalReader(id, makeTerminalReader(term))
     }
 

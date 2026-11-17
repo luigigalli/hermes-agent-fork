@@ -32,7 +32,7 @@
 import { type PluginLocaleBundles, type PluginTranslate, usePluginI18n } from '@hermes/plugin-sdk'
 import { useMemo } from 'react'
 
-import { CANONICAL_GROUP_LOCALE_ITALIAN, CANONICAL_GROUP_LOCALES } from './canonical-group-locales'
+import { CANONICAL_GROUP_LOCALES } from './canonical-group-locales'
 import { CROSS_GATEWAY_GROUP_LOCALES } from './cross-gateway-locales'
 import { GROUP_CHAT_LOCALES } from './group-chat-locales'
 import { GROUP_SURFACE_AR } from './group-surface-ar'
@@ -45,23 +45,8 @@ import { type BotsMessages } from './i18n-messages'
 import { ROSTER_CHROME } from './roster-chrome-locales'
 import { getPluginCtx } from './shared'
 
-/** Italian gate copy — rides the runtime 'it' language pack (see
- *  `plugin.register` + canonical-group-italian-pack.ts). */
-const IT_GATES_LOCALES = {
-  legacyGate: {
-    legacyRoom:
-      'Questa è una chat di un desktop legacy. Avvia un gruppo gestito dal gateway con questi membri per continuare a scrivere; i thread passati sono mostrati in alto in sola lettura e non vengono riprodotti nella nuova chat.',
-    start: 'Avvia nuovo gruppo'
-  }
-}
-
 const en: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES.en,
-  legacyGate: {
-    legacyRoom:
-      "This is a legacy Desktop chat. Start a gateway-owned group with these members to keep writing; the chat's old threads are shown read-only above and are not replayed into the new chat.",
-    start: 'Start new group'
-  },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES.en,
   editor: {
     fullConfigHint: 'Full configuration needs a newer gateway (restart it after updating Hermes).',
@@ -96,7 +81,7 @@ const en: BotsMessages = {
     shareKeys: 'Share keys & accounts with the main profile',
     shareKeysOn: target => `Share keys & accounts with the default profile on ${target}`,
     shareKeysHint:
-      'Subscriptions, OAuth logins, and API keys stay shared (not copied), so token refreshes never invalidate each other. Uncheck for an isolated snapshot copy.',
+      'Subscriptions, OAuth logins, and API keys stay shared with the default profile (not copied), so token refreshes never invalidate each other. Uncheck for an isolated snapshot copy.',
     needsModel:
       'No model provider is ready for it yet, so it skipped its introduction. Pick a provider and model under Advanced.',
     configureModel: 'Configure model',
@@ -431,8 +416,7 @@ const en: BotsMessages = {
     otherControls: 'Another viewer is in control',
     agentControls: 'Bot is in control',
     controlTaken: 'Another viewer took control. Watching only.',
-    needsHttps:
-      'Bot screens need a secure connection. Open the Webapp over HTTPS, or through an SSH tunnel to 127.0.0.1, to view this one.'
+    needsHttps: 'Bot screens need a secure connection. Open the Webapp over HTTPS, or through an SSH tunnel to 127.0.0.1, to view this one.'
   },
   cron: {
     untitled: 'Untitled job',
@@ -502,11 +486,6 @@ const en: BotsMessages = {
 
 const ja: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES.ja,
-  legacyGate: {
-    legacyRoom:
-      'これはレガシーなデスクトップチャットです。書き続けるには、これらのメンバーでゲートウェイ管理のグループを開始してください。過去のスレッドは上に読み取り専用で表示され、新しいチャットには再生されません。',
-    start: '新しいグループを開始'
-  },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES.ja,
   editor: {
     fullConfigHint: 'すべての設定を使うには新しいゲートウェイが必要です（Hermes 更新後に再起動してください）。',
@@ -542,7 +521,7 @@ const ja: BotsMessages = {
     shareKeys: 'メインプロファイルとキー・アカウントを共有',
     shareKeysOn: target => `${target} の default プロファイルとキー・アカウントを共有`,
     shareKeysHint:
-      'サブスクリプション、OAuth ログイン、API キーをコピーせず共有するため、トークン更新で互いに無効になりません。チェックを外すと独立したスナップショットをコピーします。',
+      'サブスクリプション、OAuth ログイン、API キーを default プロファイルとコピーせず共有するため、トークン更新で互いに無効になりません。チェックを外すと独立したスナップショットをコピーします。',
     needsModel:
       'まだ使用できるモデルプロバイダーがないため、自己紹介をスキップしました。「詳細設定」でプロバイダーとモデルを選んでください。',
     configureModel: 'モデルを設定',
@@ -733,10 +712,8 @@ const ja: BotsMessages = {
     compressing: (member: string) => `${member} のグループチャット履歴を圧縮中…`,
     compressDone: (member: string, compressed: number, detail: string) =>
       `${member} のグループチャットセッション ${compressed} 件を圧縮しました${detail ? ` — ${detail}` : ''}`,
-    compressNothing: (member: string) =>
-      `${member} に圧縮する履歴はありません — グループチャットセッションがまだありません`,
-    compressFailed: (member: string, error: string) =>
-      `${member} のグループチャット履歴を圧縮できませんでした: ${error}`,
+    compressNothing: (member: string) => `${member} に圧縮する履歴はありません — グループチャットセッションがまだありません`,
+    compressFailed: (member: string, error: string) => `${member} のグループチャット履歴を圧縮できませんでした: ${error}`,
     searchToAdd: '追加するボットを検索',
     searchToAddPlaceholder: '追加するボットを検索…',
     removeFromSelection: '選択から外す',
@@ -882,8 +859,7 @@ const ja: BotsMessages = {
     otherControls: '別のビューアが操作中',
     agentControls: 'ボットが操作中',
     controlTaken: '別のビューアが操作を引き継ぎました。閲覧のみ。',
-    needsHttps:
-      'ボットの画面には安全な接続が必要です。表示するには、Webapp を HTTPS か 127.0.0.1 への SSH トンネル経由で開いてください。'
+    needsHttps: 'ボットの画面には安全な接続が必要です。表示するには、Webapp を HTTPS か 127.0.0.1 への SSH トンネル経由で開いてください。'
   },
   cron: {
     untitled: '無題のジョブ',
@@ -953,11 +929,6 @@ const ja: BotsMessages = {
 
 const zh: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES.zh,
-  legacyGate: {
-    legacyRoom:
-      '这是旧版桌面群聊。要与这些成员继续交流，请启动由网关管理的群组；过去的线程以只读方式显示在上方，不会回放到新群聊。',
-    start: '新建群组'
-  },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES.zh,
   editor: {
     fullConfigHint: '完整配置需要更新网关（更新 Hermes 后请重启网关）。',
@@ -991,7 +962,7 @@ const zh: BotsMessages = {
     shareKeys: '与主配置档案共享密钥和账户',
     shareKeysOn: target => `与 ${target} 上的 default 配置档案共享密钥和账户`,
     shareKeysHint:
-      '订阅、OAuth 登录和 API 密钥保持共享而非复制，令牌刷新不会使另一方失效。取消勾选则创建隔离的快照副本。',
+      '订阅、OAuth 登录和 API 密钥与 default 配置档案保持共享而非复制，令牌刷新不会使另一方失效。取消勾选则创建隔离的快照副本。',
     needsModel: '它还没有可用的模型提供商，因此跳过了自我介绍。请在“高级”中选择提供商和模型。',
     configureModel: '配置模型',
     createEmpty: '创建空配置（跳过内置技能）',
@@ -1384,11 +1355,6 @@ const zh: BotsMessages = {
 
 const zhHant: BotsMessages = {
   canonical: CANONICAL_GROUP_LOCALES['zh-hant'],
-  legacyGate: {
-    legacyRoom:
-      '這是舊版桌面聊天。要與這些成員繼續書寫，請啟動由閘道管理的群組；過去的話題以唯讀方式顯示在上方，不會重播到新聊天。',
-    start: '建立新的群組'
-  },
   crossGateway: CROSS_GATEWAY_GROUP_LOCALES['zh-hant'],
   editor: {
     fullConfigHint: '完整設定需要更新閘道（更新 Hermes 後請重新啟動閘道）。',
@@ -1422,7 +1388,7 @@ const zhHant: BotsMessages = {
     shareKeys: '與主要設定檔共用金鑰和帳戶',
     shareKeysOn: target => `與 ${target} 上的 default 設定檔共用金鑰和帳戶`,
     shareKeysHint:
-      '訂閱、OAuth 登入和 API 金鑰保持共用而非複製，權杖更新不會使另一方失效。取消勾選則建立隔離的快照副本。',
+      '訂閱、OAuth 登入和 API 金鑰與 default 設定檔保持共用而非複製，權杖更新不會使另一方失效。取消勾選則建立隔離的快照副本。',
     needsModel: '它還沒有可用的模型提供者，因此略過了自我介紹。請在「進階」中選擇提供者和模型。',
     configureModel: '設定模型',
     createEmpty: '建立空白設定（略過內建技能）',
@@ -1823,13 +1789,7 @@ export const BOTS_LOCALES: PluginLocaleBundles = {
   ru: { canonical: CANONICAL_GROUP_LOCALES.ru, crossGateway: CROSS_GATEWAY_GROUP_LOCALES.ru, ...GROUP_SURFACE_RU },
   fr: { canonical: CANONICAL_GROUP_LOCALES.fr, crossGateway: CROSS_GATEWAY_GROUP_LOCALES.fr, ...GROUP_SURFACE_FR },
   de: { canonical: CANONICAL_GROUP_LOCALES.de, crossGateway: CROSS_GATEWAY_GROUP_LOCALES.de, ...GROUP_SURFACE_DE },
-  es: { canonical: CANONICAL_GROUP_LOCALES.es, crossGateway: CROSS_GATEWAY_GROUP_LOCALES.es, ...GROUP_SURFACE_ES },
-  // Italian rides the runtime language pack the plugin registers
-  // (`ctx.i18n.registerAppLocale`, canonical-group-italian-pack.ts): the app
-  // resolves plugin bundles only for the ACTIVE locale, so without that pack
-  // this bundle would simply never resolve. Partial by design — the group
-  // surfaces it covers, English fallback for the rest.
-  it: { canonical: CANONICAL_GROUP_LOCALE_ITALIAN, legacyGate: IT_GATES_LOCALES.legacyGate }
+  es: { canonical: CANONICAL_GROUP_LOCALES.es, crossGateway: CROSS_GATEWAY_GROUP_LOCALES.es, ...GROUP_SURFACE_ES }
 }
 
 export type BotsText = Bound<BotsMessages>

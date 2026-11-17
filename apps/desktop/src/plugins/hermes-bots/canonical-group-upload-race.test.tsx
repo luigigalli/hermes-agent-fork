@@ -6,38 +6,22 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const request = vi.hoisted(() => vi.fn())
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { pluginSdkMock, createGroupGateway } = await import('./group-test-utils')
   const gateway = createGroupGateway()
   const { en } = await import('@/i18n/en')
   const { CANONICAL_GROUP_LOCALES } = await import('./canonical-group-locales')
   const { captureGroupRequests } = await import('./canonical-group-contract-test-utils')
 
-  return {
-
-    ...actual,
-    ...(await pluginSdkMock(gateway.host)),
-    atom,
-    useValue: useStore,
+  return { ...await pluginSdkMock(gateway.host), atom, useValue: useStore,
     useI18n: () => ({ t: en }),
-    usePluginI18n: () => (key: string) =>
-      CANONICAL_GROUP_LOCALES.en[key.replace('canonical.', '') as keyof typeof CANONICAL_GROUP_LOCALES.en] ?? key,
+    usePluginI18n: () => (key: string) => CANONICAL_GROUP_LOCALES.en[key.replace('canonical.', '') as keyof typeof CANONICAL_GROUP_LOCALES.en] ?? key,
     Button: (p: ComponentProps<'button'>) => <button {...p} />,
-    host: { ...gateway.host, requestProfile: captureGroupRequests(request).request }
-  }
+    host: { ...gateway.host, requestProfile: captureGroupRequests(request).request } }
 })
 import { CanonicalGroupWorkspace } from './canonical-group-workspace'
 const originalDesktop = window.hermesDesktop
-beforeEach(() => {
-  Object.defineProperty(window, 'hermesDesktop', { configurable: true, writable: true, value: undefined })
-})
-afterEach(() => {
-  cleanup()
-  request.mockReset()
-  localStorage.clear()
-  window.hermesDesktop = originalDesktop
-})
+beforeEach(() => { Object.defineProperty(window, 'hermesDesktop', { configurable: true, writable: true, value: undefined }) })
+afterEach(() => { cleanup(); request.mockReset(); localStorage.clear(); window.hermesDesktop = originalDesktop })
 
 // C21: while a selected file's upload acknowledgement is outstanding, Send cannot dispatch the text
 // without it, and the late manifest never lands on the cleared next draft.
@@ -45,32 +29,18 @@ it('holds Send until the selected attachment is committed, then sends it with th
   let ack!: () => void
   const uploaded = { attachment_id: 'file-one', kind: 'file', name: 'report.txt', mime: 'text/plain', size: 2 }
   request.mockImplementation(async (_route, method, params) => {
-    if (method === 'groups.state') {
-      return { room: { name: 'Room' }, driver_status: {} }
-    }
+    if (method === 'groups.state') {return { room: { name: 'Room' }, driver_status: {} }}
 
-    if (method === 'groups.log') {
-      return { events: [] }
-    }
+    if (method === 'groups.log') {return { events: [] }}
 
-    if (method === 'groups.attachment.upload') {
-      return new Promise(resolve => {
-        ack = () => resolve(uploaded)
-      })
-    }
+    if (method === 'groups.attachment.upload') {return new Promise(resolve => { ack = () => resolve(uploaded) })}
 
     return method === 'groups.send' ? { client_event_id: params.event_id, accepted: true } : {}
   })
-
-  const view = render(
-    <CanonicalGroupWorkspace binding={{ connectionId: 'remote', profile: 'team', roomId: 'upload-race' }} />
-  )
-
+  const view = render(<CanonicalGroupWorkspace binding={{ connectionId: 'remote', profile: 'team', roomId: 'upload-race' }} />)
   await screen.findByText('Room')
   await waitFor(() => expect((screen.getByRole('textbox') as HTMLTextAreaElement).disabled).toBe(false))
-  fireEvent.change(view.container.querySelector('input[type=file]')!, {
-    target: { files: [new File(['hi'], 'report.txt', { type: 'text/plain' })] }
-  })
+  fireEvent.change(view.container.querySelector('input[type=file]')!, { target: { files: [new File(['hi'], 'report.txt', { type: 'text/plain' })] } })
   await waitFor(() => expect(request.mock.calls.some(c => c[1] === 'groups.attachment.upload')).toBe(true))
   fireEvent.change(screen.getByRole('textbox'), { target: { value: 'see file' } })
   const sendButton = screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement

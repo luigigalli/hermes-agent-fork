@@ -9,11 +9,6 @@ import type { RosterChromeMessages } from './roster-chrome-locales'
 
 export type BotsMessages = {
   canonical: { [K in keyof CanonicalGroupMessages]: string }
-  /** The gate page shown for legacy Desktop rooms (read-only archive pane + start action). */
-  legacyGate: {
-    legacyRoom: string
-    start: string
-  }
   /** Group chats seating bots from more than one connected machine. */
   crossGateway: { [K in keyof CrossGatewayGroupMessages]: CrossGatewayGroupMessages[K] }
   /** Left rail: the bot + group-chat roster. */

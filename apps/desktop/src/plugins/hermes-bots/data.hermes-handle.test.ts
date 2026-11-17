@@ -12,13 +12,9 @@ import { previewKind } from './row-helpers'
 import type { RosterRow } from './types'
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom } = await import('nanostores')
 
-  return {
-    ...actual,
- atom, host: {}, queryClient: undefined, useQuery: vi.fn(), useValue: vi.fn() }
+  return { atom, host: {}, queryClient: undefined, useQuery: vi.fn(), useValue: vi.fn() }
 })
 
 vi.mock('./shared', () => ({ getPluginCtx: () => null, ID: 'hermes-bots' }))
@@ -60,9 +56,7 @@ describe('the @hermes handle', () => {
     const byName = Object.fromEntries(rows.map(row => [row.name, botHandle(row.name, row)]))
 
     expect(byName).toEqual({ default: 'default', hermes: 'hermes', researcher: 'researcher' })
-    expect(resolveRosterMentions('@default ping', rows, { name: 'researcher' }).map(row => row.name)).toEqual([
-      'default'
-    ])
+    expect(resolveRosterMentions('@default ping', rows, { name: 'researcher' }).map(row => row.name)).toEqual(['default'])
   })
 
   it('keeps each source separate: a remote hermes profile does not rename the local default', () => {

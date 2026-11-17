@@ -18,13 +18,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const { budgetedLoopMock } = vi.hoisted(() => ({ budgetedLoopMock: { impl: undefined as unknown } }))
 
 vi.mock('@hermes/plugin-sdk', async () => {
-  const actual = await vi.importActual('@hermes/plugin-sdk')
-
   const { atom } = await import('nanostores')
 
   return {
-
-    ...actual,
     atom,
     blobatarSvg: undefined,
     // A live binding on the real SDK; the getter lets one test file cover both

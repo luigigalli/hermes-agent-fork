@@ -6,7 +6,10 @@ import {
   graftRefreshedTailOntoBackfill,
   olderPageReader
 } from '@/app/chat/transcript-backfill'
-import { isSessionRecentlyInterrupted, recentInterruptRemainingMs } from '@/app/session/hooks/use-prompt-actions/utils'
+import {
+  isSessionRecentlyInterrupted,
+  recentInterruptRemainingMs
+} from '@/app/session/hooks/use-prompt-actions/utils'
 import { sessionCreatedThisRun } from '@/app/session/hooks/use-session-actions/created-this-run'
 import { preserveLocalPendingTurnMessages } from '@/app/session/hooks/use-session-actions/utils'
 import { getLatestSessionMessages, type ProfileScope } from '@/hermes'
@@ -32,6 +35,7 @@ import {
   $busy,
   $connection,
   $currentCwd,
+  $currentModelSource,
   $messagingSessions,
   $selectedStoredSessionId,
   $sessions,
@@ -167,11 +171,7 @@ function tileRuntimeOwnsLiveState(runtimeId: string): boolean {
 
   return Boolean(
     state &&
-    (state.busy ||
-      state.awaitingResponse ||
-      state.needsInput ||
-      state.turnLive ||
-      stopAwaitsItsReceipt(state, runtimeId))
+      (state.busy || state.awaitingResponse || state.needsInput || state.turnLive || stopAwaitsItsReceipt(state, runtimeId))
   )
 }
 
@@ -227,7 +227,10 @@ function tileRowFingerprintKey(storedSessionId: string): string {
 }
 
 /** The session row backing a tile, if it is listed in the sidebar slices.
- *  Hidden bot chats have no row — they keep fetching every tick. */
+ *  Hidden bot chats have no row — they keep fetching every tick. Listed
+ *  slices only, never ownerLookupSessionRows(): its owner-only stubs include
+ *  parked hidden rows no list page refreshes, so their fingerprint would
+ *  freeze the tile. */
 function tileListRow(storedSessionId: string) {
   return (
     $sessions.get().find(session => sessionMatchesStoredId(session, storedSessionId)) ??
@@ -1140,13 +1143,10 @@ export function useBackgroundSync({
       const state = $sessionStates.get()[activeSessionId]
 
       if (stopHoldTimer === null && state && stopAwaitsItsReceipt(state, activeSessionId)) {
-        stopHoldTimer = setTimeout(
-          () => {
-            stopHoldTimer = null
-            observe()
-          },
-          recentInterruptRemainingMs(activeSessionId) + 1
-        )
+        stopHoldTimer = setTimeout(() => {
+          stopHoldTimer = null
+          observe()
+        }, recentInterruptRemainingMs(activeSessionId) + 1)
       }
     }
 
@@ -1621,4 +1621,23 @@ export function useBackgroundSync({
       void refreshHermesConfig()
     }
   }, [activeSessionId, freshDraftReady, gatewayState, refreshCurrentModel, refreshHermesConfig])
+
+  // A refused mid-turn pick hands new chats back to the default (deferred-pick.ts) while a draft may already
+  // be open: repaint that draft's pill with the default it now launches with.
+  useEffect(() => {
+    if (gatewayState !== 'open' || activeSessionId) {
+      return
+    }
+
+    let last = $currentModelSource.get()
+
+    return $currentModelSource.listen(next => {
+      const released = last === 'manual' && next === 'default'
+      last = next
+
+      if (released) {
+        void refreshCurrentModel()
+      }
+    })
+  }, [activeSessionId, gatewayState, refreshCurrentModel])
 }

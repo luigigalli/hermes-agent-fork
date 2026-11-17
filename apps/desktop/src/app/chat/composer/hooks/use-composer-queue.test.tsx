@@ -117,56 +117,27 @@ describe('useComposerQueue park integration', () => {
   it('admits native Queue through submit and retains an uncertain draft without a local replay', async () => {
     $connection.set({ mode: 'local', wsUrl: 'ws://localhost/api/ws?native_dial=unminted' } as HermesConnection)
     const draftRef = { current: 'durable queue' }
-
-    const clearDraft = vi.fn(() => {
-      draftRef.current = ''
-    })
-
+    const clearDraft = vi.fn(() => { draftRef.current = '' })
     const onSubmit = vi.fn<ChatBarProps['onSubmit']>().mockResolvedValue(false)
 
-    const hook = renderHook(
-      ({ busy }) =>
-        useComposerQueue({
-          activeQueueSessionKey: SESSION_KEY,
-          attachments: [],
-          busy,
-          clearDraft,
-          draftRef,
-          focusInput: () => undefined,
-          loadIntoComposer: () => undefined,
-          onCancel: vi.fn(),
-          onSteer: undefined,
-          onSubmit,
-          queueEditRef: { current: null },
-          queueSessionKey: SESSION_KEY,
-          sessionId: 'rt-session-queue-hook'
-        }),
-      { initialProps: { busy: true } }
-    )
+    const hook = renderHook(({ busy }) => useComposerQueue({
+      activeQueueSessionKey: SESSION_KEY, attachments: [], busy, clearDraft, draftRef,
+      focusInput: () => undefined, loadIntoComposer: () => undefined, onCancel: vi.fn(), onSteer: undefined,
+      onSubmit, queueEditRef: { current: null }, queueSessionKey: SESSION_KEY, sessionId: 'rt-session-queue-hook'
+    }), { initialProps: { busy: true } })
 
     try {
-      await act(async () => {
-        await hook.result.current.queueCurrentDraft()
-      })
-      expect(onSubmit).toHaveBeenCalledWith(
-        'durable queue',
-        expect.objectContaining({ fromQueue: true, storedSessionId: SESSION_KEY })
-      )
+      await act(async () => { await hook.result.current.queueCurrentDraft() })
+      expect(onSubmit).toHaveBeenCalledWith('durable queue', expect.objectContaining({ fromQueue: true, storedSessionId: SESSION_KEY }))
       expect(draftRef.current).toBe('durable queue')
       expect(getQueuedPrompts(SESSION_KEY)).toEqual([])
       onSubmit.mockResolvedValue(true)
-      await act(async () => {
-        await hook.result.current.queueCurrentDraft()
-      })
+      await act(async () => { await hook.result.current.queueCurrentDraft() })
       expect(clearDraft).toHaveBeenCalledTimes(1)
       hook.rerender({ busy: false })
-      await act(async () => {
-        await Promise.resolve()
-      })
+      await act(async () => { await Promise.resolve() })
       expect(onSubmit).toHaveBeenCalledTimes(2)
-    } finally {
-      $connection.set(null)
-    }
+    } finally { $connection.set(null) }
   })
 
   it('does not clear the next session draft when a queue ACK arrives after navigation', async () => {
@@ -175,43 +146,19 @@ describe('useComposerQueue park integration', () => {
     const clearDraft = vi.fn()
     const draftRef = { current: 'same text' }
 
-    const hook = renderHook(
-      ({ key }) =>
-        useComposerQueue({
-          activeQueueSessionKey: key,
-          attachments: [],
-          busy: true,
-          clearDraft,
-          draftRef,
-          focusInput: () => undefined,
-          loadIntoComposer: () => undefined,
-          onCancel: vi.fn(),
-          onSteer: undefined,
-          onSubmit: () =>
-            new Promise<boolean>(resolve => {
-              accept = resolve
-            }),
-          queueEditRef: { current: null },
-          queueSessionKey: key,
-          sessionId: key
-        }),
-      { initialProps: { key: 'outgoing' } }
-    )
+    const hook = renderHook(({ key }) => useComposerQueue({
+      activeQueueSessionKey: key, attachments: [], busy: true, clearDraft, draftRef,
+      focusInput: () => undefined, loadIntoComposer: () => undefined, onCancel: vi.fn(), onSteer: undefined,
+      onSubmit: () => new Promise<boolean>(resolve => { accept = resolve }), queueEditRef: { current: null }, queueSessionKey: key, sessionId: key
+    }), { initialProps: { key: 'outgoing' } })
 
     try {
       let pending: boolean | Promise<boolean> = false
-      act(() => {
-        pending = hook.result.current.queueCurrentDraft()
-      })
+      act(() => { pending = hook.result.current.queueCurrentDraft() })
       hook.rerender({ key: 'incoming' })
-      await act(async () => {
-        accept(true)
-        await pending
-      })
+      await act(async () => { accept(true); await pending })
       expect(clearDraft).not.toHaveBeenCalled()
-    } finally {
-      $connection.set(null)
-    }
+    } finally { $connection.set(null) }
   })
 
   it('reschedules rejected foreground drains to a bounded stop and keeps manual recovery', async () => {
@@ -598,13 +545,7 @@ describe('useComposerQueue scope', () => {
           onSubmit: vi.fn(async () => true),
           queueEditRef: { current: null }
         }),
-      {
-        initialProps: {
-          activeQueueSessionKey: 'session-a',
-          queueSessionKey: 'session-a',
-          sessionId: 'session-a'
-        } as Scope
-      }
+      { initialProps: { activeQueueSessionKey: 'session-a', queueSessionKey: 'session-a', sessionId: 'session-a' } as Scope }
     )
 
     expect(hook.result.current.queuedPrompts.map(entry => entry.text)).toEqual(['for A'])
@@ -671,12 +612,7 @@ describe('useComposerQueue scope', () => {
       { admission_id: 'adm-1', status: 'queued', user: 'old words', controls: ['steer', 'replace'] }
     ])
     const reply = deferred()
-
-    const { draftRef, hook } = renderQueueHook({
-      busy: true,
-      draft: 'my draft',
-      replaceServerQueued: () => reply.promise
-    })
+    const { draftRef, hook } = renderQueueHook({ busy: true, draft: 'my draft', replaceServerQueued: () => reply.promise })
 
     act(() => hook.result.current.beginQueuedEdit(getQueuedPrompts(SESSION_KEY)[0]!))
     draftRef.current = 'new words'
@@ -699,12 +635,8 @@ describe('useComposerQueue scope', () => {
     ])
     clearNotifications()
     const replies = [deferred(), deferred(), deferred()]
-
-    const replaceServerQueued = vi.fn(
-      (_admissionId: string, _text: string, _submissionId: string) =>
-        replies[replaceServerQueued.mock.calls.length - 1]!.promise
-    )
-
+    const replaceServerQueued = vi.fn((_admissionId: string, _text: string, _submissionId: string) =>
+      replies[replaceServerQueued.mock.calls.length - 1]!.promise)
     const { draftRef, hook } = renderQueueHook({ busy: true, draft: 'my draft', replaceServerQueued })
 
     act(() => hook.result.current.beginQueuedEdit(getQueuedPrompts(SESSION_KEY)[0]!))
@@ -740,11 +672,9 @@ describe('useComposerQueue scope', () => {
     reconcilePendingSubmissions(SESSION_KEY, [
       { admission_id: 'adm-1', status: 'queued', user: 'old words', controls: ['steer', 'replace'] }
     ])
-
     const replaceServerQueued = vi.fn(async (_admissionId: string, _text: string, _submissionId: string) => {
       throw new Error('socket closed')
     })
-
     const { draftRef, hook } = renderQueueHook({ busy: true, replaceServerQueued })
 
     act(() => hook.result.current.beginQueuedEdit(getQueuedPrompts(SESSION_KEY)[0]!))
@@ -768,12 +698,7 @@ describe('useComposerQueue scope', () => {
       { admission_id: 'adm-1', status: 'queued', user: 'old words', controls: ['steer', 'replace'] }
     ])
     const reply = deferred()
-
-    const { draftRef, hook } = renderQueueHook({
-      busy: true,
-      draft: 'my draft',
-      replaceServerQueued: () => reply.promise
-    })
+    const { draftRef, hook } = renderQueueHook({ busy: true, draft: 'my draft', replaceServerQueued: () => reply.promise })
 
     act(() => hook.result.current.beginQueuedEdit(getQueuedPrompts(SESSION_KEY)[0]!))
     draftRef.current = 'new words'
